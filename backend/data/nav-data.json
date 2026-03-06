@@ -1,0 +1,89 @@
+{
+  "siteSettings": {
+    "title": "Nav Site",
+    "logoUrl": "https://github.githubassets.com/favicons/favicon.svg"
+  },
+  "categories": [
+    {
+      "id": "cat_001",
+      "name": "全部",
+      "icon": "📋",
+      "order": 0
+    },
+    {
+      "id": "cat_002",
+      "name": "链接",
+      "icon": "🔗",
+      "order": 1,
+      "subCategories": [
+        {
+          "id": "sub_mW6gERnq",
+          "name": "常用链接",
+          "color": "#43e97b",
+          "order": 0,
+          "links": [
+            {
+              "id": "lnk_002",
+              "title": "搜索 - Microsoft 必应",
+              "url": "https://www.bing.com",
+              "description": "使用 Microsoft 必应进行搜索，智能搜索引擎",
+              "favicon": "https://www.bing.com/sa/simg/favicon-trans-bg-blue-mg-png.png",
+              "order": 0,
+              "customButtons": []
+            },
+            {
+              "id": "lnk_ECO7ERg-",
+              "title": "www.google.com.hk",
+              "url": "https://www.google.com.hk/",
+              "description": "",
+              "favicon": "https://www.google.com/s2/favicons?domain=www.google.com.hk&sz=64",
+              "order": 1,
+              "customButtons": []
+            },
+            {
+              "id": "lnk_001",
+              "title": "GitHub",
+              "url": "https://github.com",
+              "description": "全球最大的代码托管与开源协作平台",
+              "favicon": "https://github.githubassets.com/favicons/favicon.svg",
+              "order": 2,
+              "customButtons": [
+                {
+                  "id": "btn_001",
+                  "label": "Trending",
+                  "url": "https://github.com/trending"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sub__kcrMuT5",
+          "name": "友情链接",
+          "color": "#4a90d9",
+          "order": 1,
+          "links": [
+            {
+              "id": "lnk_iRXnndDN",
+              "title": "Tkong",
+              "url": "https://www.tkong.net/",
+              "description": "Tkong, Bruce's Blog, sharing techniques and ideas. Mainly sharing articles on photography, development tutorials and evaluation.",
+              "favicon": "https://www.tkong.net/favicon.ico",
+              "order": 0,
+              "customButtons": []
+            },
+            {
+              "id": "lnk_jou3Zcnp",
+              "title": "Bourne Shen 的博客",
+              "url": "https://blog.shenb.net/",
+              "description": "",
+              "favicon": "https://iblh.github.io/material-demo/#",
+              "order": 1,
+              "customButtons": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

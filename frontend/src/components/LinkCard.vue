@@ -1,0 +1,225 @@
+<template>
+  <div class="link-card" @click="goToUrl">
+    <div class="card-favicon">
+      <img
+        v-if="!faviconError"
+        :src="link.favicon"
+        :alt="link.title"
+        @error="faviconError = true"
+        class="favicon-img"
+      />
+      <span v-else class="favicon-fallback" :style="{ background: fallbackColor }">
+        {{ fallbackLetter }}
+      </span>
+    </div>
+    <div class="card-content">
+      <h3 class="card-title">{{ link.title }}</h3>
+      <p class="card-desc" v-if="link.description">{{ link.description }}</p>
+      <span class="card-url">{{ displayUrl }}</span>
+    </div>
+    <div class="card-actions" v-if="showActions" @click.stop>
+      <button class="action-btn" @click="$emit('edit')" title="编辑">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+      <button class="action-btn danger" @click="$emit('delete')" title="删除">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="card-buttons" v-if="link.customButtons && link.customButtons.length" @click.stop>
+      <a
+        v-for="btn in link.customButtons"
+        :key="btn.id"
+        :href="btn.url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="custom-btn"
+      >
+        {{ btn.label }}
+      </a>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  link: { type: Object, required: true },
+  showActions: { type: Boolean, default: false },
+})
+
+defineEmits(['edit', 'delete'])
+
+const faviconError = ref(false)
+
+const displayUrl = computed(() => {
+  try {
+    const u = new URL(props.link.url)
+    return u.hostname
+  } catch {
+    return props.link.url
+  }
+})
+
+const fallbackLetter = computed(() => {
+  return (props.link.title || props.link.url || '?').charAt(0).toUpperCase()
+})
+
+const fallbackColor = computed(() => {
+  const colors = ['#4a90d9', '#43e97b', '#f093fb', '#fa709a', '#4facfe', '#30cfd0', '#a18cd1', '#f6d365']
+  let hash = 0
+  const str = props.link.url || props.link.title || ''
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
+})
+
+function goToUrl() {
+  if (props.link.url) {
+    window.open(props.link.url, '_blank', 'noopener,noreferrer')
+  }
+}
+</script>
+
+<style scoped>
+.link-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: var(--transition-base);
+  position: relative;
+}
+
+.link-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.card-favicon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-section);
+}
+
+.favicon-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.favicon-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.card-url {
+  font-size: 12px;
+  color: var(--color-text-hint);
+}
+
+.card-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.link-card:hover .card-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-hint);
+  transition: var(--transition-base);
+}
+
+.action-btn:hover {
+  background: var(--color-btn-secondary);
+  color: var(--color-primary);
+}
+
+.action-btn.danger:hover {
+  background: #fef0ef;
+  color: var(--color-danger);
+}
+
+.card-buttons {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.custom-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-radius: 12px;
+  transition: var(--transition-base);
+}
+
+.custom-btn:hover {
+  background: var(--color-primary-light);
+}
+</style>

@@ -1,0 +1,5 @@
+{
+  "username": "admin",
+  "password": "$2b$10$jOMM0zF89K.7L24fZ8i7W.5NTEDo5iVZrfGi34zpUsy49kbOqp0CC",
+  "jwtSecret": "nav-site-secret-key-change-in-production"
+}

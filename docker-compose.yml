@@ -1,0 +1,8 @@
+services:
+  nav-site:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/data:/app/data
+    restart: unless-stopped
