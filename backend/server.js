@@ -576,10 +576,10 @@ app.post('/api/settings/logo', authMiddleware, (req, res) => {
 
 app.post('/api/fetch-meta', authMiddleware, async (req, res) => {
   try {
-    const { url } = req.body;
+    const { url, skipIconSource } = req.body;
     if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
 
-    const meta = await fetchMeta(url);
+    const meta = await fetchMeta(url, { skipIconSource });
     res.json({ success: true, data: meta });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

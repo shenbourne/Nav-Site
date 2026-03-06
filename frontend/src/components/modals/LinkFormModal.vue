@@ -62,6 +62,15 @@
         <label>图标网址</label>
         <div class="favicon-row">
           <input v-model="form.favicon" type="text" placeholder="https://example.com/favicon.ico" />
+          <button
+            type="button"
+            class="btn btn-fetch-icon"
+            :disabled="fetchingIcon || !form.url"
+            @click="fetchIconFromWeb"
+          >
+            <span v-if="fetchingIcon" class="spinner-small"></span>
+            <span v-else>网络获取</span>
+          </button>
           <div class="favicon-preview" v-if="form.favicon">
             <img :src="form.favicon" @error="($event.target.style.display = 'none')" />
           </div>
@@ -108,6 +117,7 @@ const emit = defineEmits(['close', 'submit'])
 
 const store = useNavStore()
 const fetching = ref(false)
+const fetchingIcon = ref(false)
 const isEdit = ref(false)
 
 const form = ref(getDefaultForm())
@@ -180,6 +190,21 @@ async function autoFetch() {
     // Silently fail
   } finally {
     fetching.value = false
+  }
+}
+
+async function fetchIconFromWeb() {
+  if (!form.value.url) return
+  fetchingIcon.value = true
+  try {
+    const meta = await store.fetchMeta(form.value.url, { skipIconSource: true })
+    if (meta && meta.favicon) {
+      form.value.favicon = meta.favicon
+    }
+  } catch {
+    // Silently fail
+  } finally {
+    fetchingIcon.value = false
   }
 }
 
@@ -288,6 +313,39 @@ function handleSubmit() {
 .btn-fetch:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-fetch-icon {
+  padding: 10px 16px;
+  background: var(--color-btn-secondary);
+  color: var(--color-text-primary);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-base);
+}
+
+.btn-fetch-icon:hover:not(:disabled) {
+  background: var(--color-btn-secondary-hover);
+}
+
+.btn-fetch-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-text-hint);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 .spinner {

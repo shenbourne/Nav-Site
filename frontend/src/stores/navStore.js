@@ -187,8 +187,8 @@ export const useNavStore = defineStore('nav', () => {
     }
   }
 
-  async function fetchMeta(url) {
-    const { data: res } = await api.post('/fetch-meta', { url })
+  async function fetchMeta(url, options = {}) {
+    const { data: res } = await api.post('/fetch-meta', { url, skipIconSource: options.skipIconSource })
     return res.success ? res.data : null
   }
 
