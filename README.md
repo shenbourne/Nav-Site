@@ -32,46 +32,7 @@
 | 数据存储 | JSON 文件 |
 | 容器化 | Docker (多阶段构建) |
 
-## 项目结构
 
-```
-nav-site/
-├── frontend/                 # 前端项目
-│   ├── src/
-│   │   ├── App.vue           # 主组件
-│   │   ├── assets/           # 静态资源 (emojiData.js 等)
-│   │   ├── components/       # 组件
-│   │   │   ├── NavHeader.vue
-│   │   │   ├── SearchBar.vue
-│   │   │   ├── CategoryTabs.vue
-│   │   │   ├── LinkCard.vue
-│   │   │   ├── SubCategorySection.vue
-│   │   │   ├── StreamLayout.vue
-│   │   │   └── modals/       # 弹窗组件
-│   │   │       ├── AdminModal.vue
-│   │   │       ├── LoginModal.vue
-│   │   │       ├── LinkFormModal.vue
-│   │   │       ├── CategoryFormModal.vue
-│   │   │       ├── SubCategoryFormModal.vue
-│   │   │       ├── ChangePasswordModal.vue
-│   │   │       ├── ConfirmModal.vue
-│   │   │       └── BaseModal.vue
-│   │   ├── composables/      # 组合式函数
-│   │   └── stores/           # Pinia 状态管理
-│   ├── package.json
-│   └── vite.config.js
-├── backend/                  # 后端项目
-│   ├── server.js             # Express 服务入口
-│   ├── services/             # 服务层
-│   │   └── meta-fetcher.js   # 网页元数据抓取
-│   ├── data/                 # 数据目录 (运行时生成)
-│   │   ├── nav-data.json     # 导航数据
-│   │   ├── auth-config.json  # 认证配置
-│   │   └── uploads/          # 上传文件
-│   └── package.json
-├── Dockerfile                # Docker 多阶段构建
-└── docker-compose.yml        # Docker Compose 配置
-```
 
 ## 快速开始
 

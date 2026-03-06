@@ -80,6 +80,21 @@
               "favicon": "https://iblh.github.io/material-demo/#",
               "order": 1,
               "customButtons": []
+            },
+            {
+              "id": "lnk_CnGfM4HI",
+              "title": "shenbourne/Nav-Sit",
+              "url": "https://github.com/shenbourne/Nav-Site",
+              "description": "一个简洁美观的个人导航网站，支持分类管理、链接收藏、暗色模式等功能。基于 Vue 3 + Express 5 构建，支持 Docker 一键部署。 - shenbourne/Nav-Site",
+              "favicon": "https://github.githubassets.com/favicons/favicon.svg",
+              "order": 2,
+              "customButtons": [
+                {
+                  "id": "btn_eZLvfAF-",
+                  "label": "Docker Hub",
+                  "url": "https://hub.docker.com/repository/docker/shenbourne/nav-site/general"
+                }
+              ]
             }
           ]
         }
