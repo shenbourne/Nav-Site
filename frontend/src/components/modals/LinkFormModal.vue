@@ -66,10 +66,10 @@
             type="button"
             class="btn btn-fetch-icon"
             :disabled="fetchingIcon || !form.url"
-            @click="fetchIconFromWeb"
+            @click="fetchIconFromLocal"
           >
             <span v-if="fetchingIcon" class="spinner-small"></span>
-            <span v-else>网络获取</span>
+            <span v-else>本地获取</span>
           </button>
           <div class="favicon-preview" v-if="form.favicon">
             <img :src="form.favicon" @error="($event.target.style.display = 'none')" />
@@ -98,11 +98,21 @@
       </div>
     </form>
   </BaseModal>
+
+  <!-- 图标选择弹窗（放在 BaseModal 外，通过 Teleport 渲染到 body） -->
+  <IconSelectModal 
+    v-if="iconSelectorVisible"
+    :visible="iconSelectorVisible"
+    :icons="matchedIcons"
+    @close="iconSelectorVisible = false"
+    @select="onIconSelected"
+  />
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
 import BaseModal from './BaseModal.vue'
+import IconSelectModal from './IconSelectModal.vue'
 import { useNavStore } from '../../stores/navStore.js'
 
 const props = defineProps({
@@ -119,6 +129,8 @@ const store = useNavStore()
 const fetching = ref(false)
 const fetchingIcon = ref(false)
 const isEdit = ref(false)
+const iconSelectorVisible = ref(false)
+const matchedIcons = ref([])
 
 const form = ref(getDefaultForm())
 
@@ -180,7 +192,7 @@ async function autoFetch() {
   if (!form.value.url) return
   fetching.value = true
   try {
-    const meta = await store.fetchMeta(form.value.url)
+    const meta = await store.fetchMeta(form.value.url, { skipIconSource: true })
     if (meta) {
       if (meta.title) form.value.title = meta.title
       if (meta.description) form.value.description = meta.description
@@ -193,19 +205,27 @@ async function autoFetch() {
   }
 }
 
-async function fetchIconFromWeb() {
+async function fetchIconFromLocal() {
   if (!form.value.url) return
   fetchingIcon.value = true
   try {
-    const meta = await store.fetchMeta(form.value.url, { skipIconSource: true })
-    if (meta && meta.favicon) {
-      form.value.favicon = meta.favicon
+    const icons = await store.matchIcons(form.value.url)
+    if (icons && icons.length > 0) {
+      matchedIcons.value = icons
+      iconSelectorVisible.value = true
+    } else {
+      alert('未匹配到任何图标')
     }
-  } catch {
-    // Silently fail
+  } catch (err) {
+    console.error('本地获取图标失败:', err)
+    alert('获取图标失败，请检查网络或稍后重试')
   } finally {
     fetchingIcon.value = false
   }
+}
+
+function onIconSelected(iconUrl) {
+  form.value.favicon = iconUrl
 }
 
 function addButton() {

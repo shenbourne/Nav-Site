@@ -27,45 +27,98 @@ async function getIconList() {
   }
 }
 
-// 模糊匹配图标
-async function matchIconFromSource(hostname) {
-  const icons = await getIconList();
-  if (!icons.length) return null;
+// 从 URL 提取所有待匹配的关键词（hostname + 路径片段）
+function extractKeywords(url) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    // 如果直接传入的是 hostname，则当作 hostname 处理
+    return [cleanHostname(url)];
+  }
 
-  // 清理主机名用于匹配
-  const cleanHost = hostname
+  const keywords = new Set();
+
+  // 1. hostname 关键词
+  const hostKw = cleanHostname(parsedUrl.hostname);
+  if (hostKw) keywords.add(hostKw);
+
+  // 2. 路径片段关键词（按 / 分割，过滤空串）
+  const pathParts = parsedUrl.pathname
+    .toLowerCase()
+    .split('/')
+    .map(p => p.trim())
+    .filter(p => p.length > 1);
+
+  for (const part of pathParts) {
+    // 将 kebab-case / camelCase / PascalCase 拆开
+    const subParts = part.split(/[-_.]/).filter(s => s.length > 1);
+    for (const sp of subParts) {
+      keywords.add(sp);
+    }
+    keywords.add(part);
+  }
+
+  return [...keywords];
+}
+
+function cleanHostname(hostname) {
+  return hostname
     .toLowerCase()
     .replace(/^www\./, '')
     .replace(/\.com$|\.cn$|\.org$|\.net$|\.io$|\.co\.\w+$/, '')
     .replace(/\./g, '');
+}
 
-  // 尝试直接匹配
-  for (const icon of icons) {
-    const iconName = icon.toLowerCase().replace('.png', '');
-    // 完全匹配
-    if (iconName === cleanHost) {
-      return `${ICON_SOURCE_URL}/${icon}`;
-    }
-    // 包含关系匹配
-    if (iconName.includes(cleanHost) || cleanHost.includes(iconName)) {
-      return `${ICON_SOURCE_URL}/${icon}`;
+// 模糊匹配图标 - 返回所有匹配的图标（按相似度排序）
+async function matchIconsFromSource(urlOrHostname) {
+  const icons = await getIconList();
+  if (!icons.length) return [];
+
+  const keywords = extractKeywords(urlOrHostname);
+
+  // iconUrl -> 最高分记录
+  const bestMatchMap = new Map();
+
+  for (const keyword of keywords) {
+    for (const icon of icons) {
+      const iconName = icon.toLowerCase().replace('.png', '');
+      const iconUrl = `${ICON_SOURCE_URL}/${icon}`;
+
+      let score = 0;
+      let type = 'fuzzy';
+
+      // 完全匹配
+      if (iconName === keyword) {
+        score = 1.0;
+        type = 'exact';
+      }
+      // 包含关系匹配
+      else if (iconName.includes(keyword) || keyword.includes(iconName)) {
+        score = calculateSimilarity(keyword, iconName);
+        type = score >= 0.9 ? 'exact' : 'contains';
+        if (score <= 0.6) continue;
+      }
+      // 模糊匹配
+      else {
+        score = calculateSimilarity(keyword, iconName);
+        if (score <= 0.5) continue;
+        type = 'fuzzy';
+      }
+
+      const existing = bestMatchMap.get(iconUrl);
+      if (!existing || score > existing.score) {
+        bestMatchMap.set(iconUrl, { icon: iconUrl, score, type });
+      }
     }
   }
 
-  // 模糊匹配：计算相似度
-  let bestMatch = null;
-  let bestScore = 0;
+  const matches = [...bestMatchMap.values()];
 
-  for (const icon of icons) {
-    const iconName = icon.toLowerCase().replace('.png', '');
-    const score = calculateSimilarity(cleanHost, iconName);
-    if (score > bestScore && score > 0.5) {
-      bestScore = score;
-      bestMatch = icon;
-    }
-  }
+  // 按相似度降序排序
+  matches.sort((a, b) => b.score - a.score);
 
-  return bestMatch ? `${ICON_SOURCE_URL}/${bestMatch}` : null;
+  return matches.slice(0, 10); // 最多返回 10 个匹配结果
 }
 
 // 简单相似度计算
@@ -115,9 +168,10 @@ async function fetchMeta(url, options = {}) {
 
   // 优先使用图标源匹配（除非指定了 skipIconSource）
   if (!options.skipIconSource) {
-    const matchedIcon = await matchIconFromSource(parsedUrl.hostname);
-    if (matchedIcon) {
-      result.favicon = matchedIcon;
+    const matchedIcons = await matchIconsFromSource(url);
+    if (matchedIcons.length > 0) {
+      result.favicon = matchedIcons[0].icon; // 默认使用最佳匹配
+      result.matchedIcons = matchedIcons; // 返回所有匹配结果供用户选择
     }
   }
 
@@ -201,4 +255,4 @@ async function fetchMeta(url, options = {}) {
   return result;
 }
 
-module.exports = { fetchMeta };
+module.exports = { fetchMeta, matchIconsFromSource };

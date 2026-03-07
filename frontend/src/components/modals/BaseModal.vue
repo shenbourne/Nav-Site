@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div class="modal-overlay" v-if="visible" @mousedown.self="$emit('close')">
+      <div class="modal-overlay" v-if="visible" :style="overlayStyle" @mousedown.self="$emit('close')">
         <div class="modal-content" :style="{ maxWidth: width }">
           <div class="modal-header">
             <h3>{{ title }}</h3>
@@ -19,12 +19,19 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   visible: Boolean,
   title: { type: String, default: '' },
   width: { type: String, default: '520px' },
+  zIndex: { type: Number, default: 1000 },
 })
 defineEmits(['close'])
+
+const overlayStyle = computed(() => {
+  return props.zIndex !== 1000 ? { zIndex: props.zIndex } : undefined
+})
 </script>
 
 <style scoped>

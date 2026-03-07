@@ -6,7 +6,7 @@ const { nanoid } = require('nanoid');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const { fetchMeta } = require('./services/meta-fetcher');
+const { fetchMeta, matchIconsFromSource } = require('./services/meta-fetcher');
 
 const app = express();
 const PORT = 3000;
@@ -581,6 +581,20 @@ app.post('/api/fetch-meta', authMiddleware, async (req, res) => {
 
     const meta = await fetchMeta(url, { skipIconSource });
     res.json({ success: true, data: meta });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- Icon matching route (protected) ---
+
+app.post('/api/match-icons', authMiddleware, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
+
+    const matchedIcons = await matchIconsFromSource(url);
+    res.json({ success: true, data: matchedIcons });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

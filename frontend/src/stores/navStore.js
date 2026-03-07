@@ -192,6 +192,11 @@ export const useNavStore = defineStore('nav', () => {
     return res.success ? res.data : null
   }
 
+  async function matchIcons(url) {
+    const { data: res } = await api.post('/match-icons', { url })
+    return res.success ? res.data : []
+  }
+
   // --- Site settings ---
 
   async function updateSettings(payload) {
@@ -274,6 +279,7 @@ export const useNavStore = defineStore('nav', () => {
     moveLink,
     deleteLink,
     fetchMeta,
+    matchIcons,
     updateSettings,
     uploadLogo,
     reorderCategories,

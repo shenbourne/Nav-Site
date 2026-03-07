@@ -78,6 +78,19 @@ npm run dev
 docker compose up -d
 ```
 
+``` yaml
+# docker-compose.yml
+
+services:
+  nav-site:
+    image: "shenbourne/nav-site:latest"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/data:/app/data
+    restart: unless-stopped
+```
+
 访问 `http://localhost:3000` 即可使用。
 
 数据通过 volume 持久化到 `./backend/data` 目录，包括导航数据、认证配置和上传的文件。
