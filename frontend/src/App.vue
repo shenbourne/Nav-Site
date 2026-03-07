@@ -151,6 +151,7 @@
       @close="adminModalVisible = false"
       @logout="handleLogout"
       @changePassword="changePasswordModalVisible = true"
+      @changeUsername="changeUsernameModalVisible = true"
       @addCategory="openCategoryModal()"
       @editCategory="openCategoryModal($event)"
       @deleteCategory="openDeleteModal('category', $event)"
@@ -199,6 +200,12 @@
       :visible="changePasswordModalVisible"
       @close="changePasswordModalVisible = false"
     />
+
+    <!-- Change Username Modal -->
+    <ChangeUsernameModal
+      :visible="changeUsernameModalVisible"
+      @close="changeUsernameModalVisible = false"
+    />
   </div>
 </template>
 
@@ -220,6 +227,7 @@ import CategoryFormModal from './components/modals/CategoryFormModal.vue'
 import SubCategoryFormModal from './components/modals/SubCategoryFormModal.vue'
 import LinkFormModal from './components/modals/LinkFormModal.vue'
 import ChangePasswordModal from './components/modals/ChangePasswordModal.vue'
+import ChangeUsernameModal from './components/modals/ChangeUsernameModal.vue'
 import ConfirmModal from './components/modals/ConfirmModal.vue'
 
 const store = useNavStore()
@@ -283,6 +291,9 @@ const adminModalVisible = ref(false)
 
 // --- Change password modal ---
 const changePasswordModalVisible = ref(false)
+
+// --- Change username modal ---
+const changeUsernameModalVisible = ref(false)
 
 // --- Category modal ---
 const categoryModalVisible = ref(false)

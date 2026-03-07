@@ -43,6 +43,17 @@ export const useAuthStore = defineStore('auth', () => {
     return res.success
   }
 
+  async function changeUsername(newUsername, password) {
+    const { data: res } = await api.put('/auth/username', { newUsername, password })
+    if (res.success) {
+      username.value = res.data.username
+      token.value = res.data.token
+      localStorage.setItem('nav_user', res.data.username)
+      localStorage.setItem('nav_token', res.data.token)
+    }
+    return res.success
+  }
+
   // Listen for auth expired event
   if (typeof window !== 'undefined') {
     window.addEventListener('auth-expired', () => {
@@ -58,5 +69,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     checkAuth,
     changePassword,
+    changeUsername,
   }
 })

@@ -162,6 +162,31 @@ app.put('/api/auth/password', authMiddleware, (req, res) => {
   }
 });
 
+// PUT change username (requires auth)
+app.put('/api/auth/username', authMiddleware, (req, res) => {
+  try {
+    const { newUsername, password } = req.body;
+    if (!newUsername || newUsername.trim().length < 2) {
+      return res.status(400).json({ success: false, error: '用户名至少需要2个字符' });
+    }
+
+    const authConfig = readAuthConfig();
+    const isMatch = bcrypt.compareSync(password, authConfig.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: '密码验证失败' });
+    }
+
+    authConfig.username = newUsername.trim();
+    writeAuthConfig(authConfig);
+
+    // Issue a new token with the updated username
+    const token = jwt.sign({ username: authConfig.username }, authConfig.jwtSecret, { expiresIn: '7d' });
+    res.json({ success: true, data: { username: authConfig.username, token } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // --- Category routes (top-level tabs) ---
 
 // GET all categories (public)
