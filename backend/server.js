@@ -618,7 +618,7 @@ app.post('/api/match-icons', authMiddleware, async (req, res) => {
     const { url } = req.body;
     if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
 
-    const matchedIcons = await matchIconsFromSource(url);
+    const matchedIcons = await matchIconsFromSource(url, { forceRefresh: true });
     res.json({ success: true, data: matchedIcons });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

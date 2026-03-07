@@ -11,9 +11,9 @@ let iconListCacheTime = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
 
 // 获取图标列表
-async function getIconList() {
+async function getIconList(forceRefresh = false) {
   const now = Date.now();
-  if (iconListCache && (now - iconListCacheTime) < CACHE_TTL) {
+  if (!forceRefresh && iconListCache && (now - iconListCacheTime) < CACHE_TTL) {
     return iconListCache;
   }
 
@@ -23,7 +23,7 @@ async function getIconList() {
     iconListCacheTime = now;
     return iconListCache;
   } catch {
-    return [];
+    return iconListCache || [];
   }
 }
 
@@ -71,8 +71,8 @@ function cleanHostname(hostname) {
 }
 
 // 模糊匹配图标 - 返回所有匹配的图标（按相似度排序）
-async function matchIconsFromSource(urlOrHostname) {
-  const icons = await getIconList();
+async function matchIconsFromSource(urlOrHostname, { forceRefresh = false } = {}) {
+  const icons = await getIconList(forceRefresh);
   if (!icons.length) return [];
 
   const keywords = extractKeywords(urlOrHostname);
