@@ -282,5 +282,6 @@ function goToUrl() {
   color: var(--color-text-secondary);
   line-height: 1.5;
   word-break: break-word;
+  white-space: pre-line;
 }
 </style>
