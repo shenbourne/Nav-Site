@@ -1,7 +1,5 @@
 # Nav Site
 
----
-
 [![Static Badge](https://img.shields.io/badge/github-Nav--Site-181717?style=flat&logo=github&logoColor=white)
 ](https://github.com/shenbourne/Nav-Site)
 [![Static Badge](https://img.shields.io/badge/docker-shenbourne%2Fnav--site-2496ED?style=flat&logo=docker&logoColor=white)
@@ -9,7 +7,8 @@
 
 一个简洁美观的个人导航网站，支持分类管理、链接收藏、暗色模式等功能。基于 Vue 3 + Express 5 构建，支持 Docker 一键部署。
 
-## 功能特性
+![demo.png](demo.png)
+## ✨ 功能特性
 
 - **分类管理** - 支持两级分类体系（一级分类 + 二级分类），支持 Emoji 图标选择器
 - **链接管理** - 添加/编辑/删除/移动链接，支持自动获取网站标题、描述和图标
@@ -24,7 +23,7 @@
 - **Logo 上传** - 支持图片 URL 和本地文件上传两种方式
 - **Docker 部署** - 多阶段构建，数据持久化
 
-## 技术栈
+## ⚙️ 技术栈
 
 | 模块 | 技术 |
 |------|------|
@@ -40,9 +39,9 @@
 | 数据存储 | JSON 文件 |
 | 容器化 | Docker (多阶段构建) |
 
-## 快速开始
+## 🚀 快速开始
 
-### 本地开发
+### 🧰 本地开发
 
 **1. 安装依赖**
 
@@ -79,7 +78,7 @@ npm run dev
 
 > 建议首次登录后立即修改密码。
 
-### Docker 部署
+### 📦 Docker 部署
 
 ```bash
 # 使用 Docker Compose 一键部署
@@ -103,7 +102,14 @@ services:
 
 数据通过 volume 持久化到 `./backend/data` 目录，包括导航数据、认证配置和上传的文件。
 
-## API 概览
+#### 首次启动时会自动创建管理员账号：
+
+- 用户名：`admin`
+- 密码：`admin123`
+
+> 建议首次登录后立即修改密码。
+
+## ⛓️ API 概览
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
