@@ -1,5 +1,12 @@
 # Nav Site
 
+---
+
+[![Static Badge](https://img.shields.io/badge/github-Nav--Site-181717?style=flat&logo=github&logoColor=white)
+](https://github.com/shenbourne/Nav-Site)
+[![Static Badge](https://img.shields.io/badge/docker-shenbourne%2Fnav--site-2496ED?style=flat&logo=docker&logoColor=white)
+](https://hub.docker.com/repository/docker/shenbourne/nav-site)
+
 一个简洁美观的个人导航网站，支持分类管理、链接收藏、暗色模式等功能。基于 Vue 3 + Express 5 构建，支持 Docker 一键部署。
 
 ## 功能特性
