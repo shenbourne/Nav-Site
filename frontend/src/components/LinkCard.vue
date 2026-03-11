@@ -78,9 +78,9 @@ const parsedDescription = computed(() => {
   
   // 转义 HTML 特殊字符
   let html = text
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
   
   // 解析图片语法 ![alt](url)
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="tooltip-img" />')
@@ -316,24 +316,24 @@ function goToUrl() {
   word-break: break-word;
 }
 
-.tooltip-line {
-  margin-bottom: 0.75em;
+.tooltip-desc :deep(.tooltip-line) {
+  margin-bottom: 0.5em;
 }
 
-.tooltip-line:last-child {
+.tooltip-desc :deep(.tooltip-line:last-child) {
   margin-bottom: 0;
 }
 
-.tooltip-strong {
+.tooltip-desc :deep(.tooltip-strong) {
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
-.tooltip-em {
+.tooltip-desc :deep(.tooltip-em) {
   font-style: italic;
 }
 
-.tooltip-code {
+.tooltip-desc :deep(.tooltip-code) {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 11px;
   background: var(--bg-section);
@@ -342,13 +342,13 @@ function goToUrl() {
   color: var(--color-primary);
 }
 
-.tooltip-hr {
+.tooltip-desc :deep(.tooltip-hr) {
   border: none;
   border-top: 1px solid var(--color-border);
   margin: 8px 0;
 }
 
-.tooltip-img {
+.tooltip-desc :deep(.tooltip-img) {
   max-width: 100%;
   border-radius: 4px;
   margin: 4px 0;
