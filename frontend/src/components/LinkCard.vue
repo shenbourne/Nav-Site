@@ -1,5 +1,5 @@
 <template>
-  <div class="link-card" @click="goToUrl">
+  <div class="link-card" @click="goToUrl" @mouseenter="showTooltip" @mouseleave="hideTooltip" @mousemove="moveTooltip">
     <div class="card-favicon">
       <img
         v-if="!faviconError"
@@ -43,11 +43,21 @@
         {{ btn.label }}
       </a>
     </div>
+    <Teleport to="body">
+      <div
+        v-if="tooltipVisible"
+        class="card-tooltip"
+        :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
+      >
+        <div class="tooltip-title">{{ link.title }}</div>
+        <div class="tooltip-desc" v-if="link.description">{{ link.description }}</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   link: { type: Object, required: true },
@@ -57,6 +67,30 @@ const props = defineProps({
 defineEmits(['edit', 'delete'])
 
 const faviconError = ref(false)
+const tooltipVisible = ref(false)
+const tooltipX = ref(0)
+const tooltipY = ref(0)
+let tooltipTimer = null
+
+function showTooltip() {
+  tooltipTimer = setTimeout(() => {
+    tooltipVisible.value = true
+  }, 300)
+}
+
+function hideTooltip() {
+  clearTimeout(tooltipTimer)
+  tooltipVisible.value = false
+}
+
+function moveTooltip(e) {
+  tooltipX.value = e.clientX + 12
+  tooltipY.value = e.clientY + 12
+}
+
+onBeforeUnmount(() => {
+  clearTimeout(tooltipTimer)
+})
 
 const displayUrl = computed(() => {
   try {
@@ -221,5 +255,32 @@ function goToUrl() {
 
 .custom-btn:hover {
   background: var(--color-primary-light);
+}
+
+.card-tooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 320px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.tooltip-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.tooltip-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  word-break: break-word;
 }
 </style>
