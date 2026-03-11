@@ -50,7 +50,7 @@
         :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
       >
         <div class="tooltip-title">{{ link.title }}</div>
-        <div class="tooltip-desc" v-if="link.description">{{ link.description }}</div>
+        <div class="tooltip-desc" v-if="link.description" v-html="parsedDescription"></div>
       </div>
     </Teleport>
   </div>
@@ -71,6 +71,38 @@ const tooltipVisible = ref(false)
 const tooltipX = ref(0)
 const tooltipY = ref(0)
 let tooltipTimer = null
+
+const parsedDescription = computed(() => {
+  const text = props.link.description || ''
+  if (!text) return ''
+  
+  // 转义 HTML 特殊字符
+  let html = text
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+  
+  // 解析图片语法 ![alt](url)
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="tooltip-img" />')
+  
+  // 解析分隔线 --- 或 *** 或 ___
+  html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '<hr class="tooltip-hr" />')
+  
+  // 解析代码语法 `code`
+  html = html.replace(/`([^`]+)`/g, '<code class="tooltip-code">$1</code>')
+  
+  // 解析强调语法 **bold** 或 __bold__
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="tooltip-strong">$1</strong>')
+  html = html.replace(/__([^_]+)__/g, '<strong class="tooltip-strong">$1</strong>')
+  
+  // 解析斜体语法 *italic* 或 _italic_
+  html = html.replace(/\*([^*]+)\*/g, '<em class="tooltip-em">$1</em>')
+  html = html.replace(/_([^_]+)_/g, '<em class="tooltip-em">$1</em>')
+  
+  // 解析换行符，每行用 div 包裹
+  const lines = html.split('\n')
+  return lines.map(line => `<div class="tooltip-line">${line || '&nbsp;'}</div>`).join('')
+})
 
 function showTooltip() {
   tooltipTimer = setTimeout(() => {
@@ -282,6 +314,43 @@ function goToUrl() {
   color: var(--color-text-secondary);
   line-height: 1.5;
   word-break: break-word;
-  white-space: pre-line;
+}
+
+.tooltip-line {
+  margin-bottom: 0.75em;
+}
+
+.tooltip-line:last-child {
+  margin-bottom: 0;
+}
+
+.tooltip-strong {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.tooltip-em {
+  font-style: italic;
+}
+
+.tooltip-code {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  background: var(--bg-section);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--color-primary);
+}
+
+.tooltip-hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 8px 0;
+}
+
+.tooltip-img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 4px 0;
 }
 </style>
