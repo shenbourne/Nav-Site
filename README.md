@@ -25,22 +25,6 @@ demo 网页：https://nav.shenb.net/
 - **Logo 上传** - 支持图片 URL 和本地文件上传两种方式
 - **Docker 部署** - 多阶段构建，数据持久化
 
-## ⚙️ 技术栈
-
-| 模块 | 技术 |
-|------|------|
-| 前端框架 | Vue 3 (Composition API) |
-| 状态管理 | Pinia |
-| 构建工具 | Vite 7 |
-| HTTP 客户端 | Axios |
-| 拖拽排序 | vuedraggable |
-| 后端框架 | Express 5 |
-| 认证 | JWT + bcryptjs |
-| 文件上传 | Multer |
-| 网页解析 | Cheerio |
-| 数据存储 | JSON 文件 |
-| 容器化 | Docker (多阶段构建) |
-
 ## 🚀 快速开始
 
 ### 🧰 本地开发
@@ -110,6 +94,23 @@ services:
 - 密码：`admin123`
 
 > 建议首次登录后立即修改密码。
+
+## ⚙️ 技术栈
+
+| 模块 | 技术 |
+|------|------|
+| 前端框架 | Vue 3 (Composition API) |
+| 状态管理 | Pinia |
+| 构建工具 | Vite 7 |
+| HTTP 客户端 | Axios |
+| 拖拽排序 | vuedraggable |
+| 后端框架 | Express 5 |
+| 认证 | JWT + bcryptjs |
+| 文件上传 | Multer |
+| 网页解析 | Cheerio |
+| 数据存储 | JSON 文件 |
+| 容器化 | Docker (多阶段构建) |
+
 
 ## ⛓️ API 概览
 
