@@ -130,6 +130,6 @@ services:
 | POST | `/api/login` | 登录 | 否 |
 | PUT | `/api/change-password` | 修改密码 | 是 |
 
-## License
+## 📜 许可证
 
-MIT
+本项目采用 GNU AGPLv3 协议开源。
