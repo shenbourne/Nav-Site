@@ -44,7 +44,7 @@
               "id": "lnk_001",
               "title": "GitHub",
               "url": "https://github.com",
-              "description": "全球最大的代码托管与开源协作平台",
+              "description": "全家桶 Coding Plan,\n支持Qwen3.5-Plus、Qwen3-Max、Qwen3.5-Flash等通义千问系列模型，同时兼容Deepseek、GLM、Kimi系列模型\n价格：Lite (¥40/月) / Pro (¥200/月) ",
               "favicon": "https://github.githubassets.com/favicons/favicon.svg",
               "order": 2,
               "customButtons": [
