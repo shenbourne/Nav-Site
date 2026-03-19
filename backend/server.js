@@ -423,15 +423,17 @@ app.post('/api/categories/:catId/subcategories/:subId/links', authMiddleware, (r
       description: description || '',
       favicon: favicon || '',
       order: sub.links.length,
-      customButtons: (customButtons || []).map(btn => ({
-        id: 'btn_' + nanoid(8),
-        label: btn.label || '',
-        url: btn.url || '',
-        iconSlug: btn.iconSlug,
-        iconSvg: btn.iconSvg,
-        iconBrandColor: btn.iconBrandColor,
-        icon: btn.icon,
-      })),
+      customButtons: (customButtons || [])
+        .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
+        .map(btn => ({
+          id: 'btn_' + nanoid(8),
+          label: btn.label || '',
+          url: btn.url || '',
+          iconSlug: btn.iconSlug,
+          iconSvg: btn.iconSvg,
+          iconBrandColor: btn.iconBrandColor,
+          icon: btn.icon,
+        )),
     };
     sub.links.push(newLink);
     writeData(data);
@@ -460,15 +462,17 @@ app.put('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddlew
     if (description !== undefined) link.description = description;
     if (favicon !== undefined) link.favicon = favicon;
     if (customButtons !== undefined) {
-      link.customButtons = customButtons.map(btn => ({
-        id: btn.id || 'btn_' + nanoid(8),
-        label: btn.label || '',
-        url: btn.url || '',
-        iconSlug: btn.iconSlug,
-        iconSvg: btn.iconSvg,
-        iconBrandColor: btn.iconBrandColor,
-        icon: btn.icon,
-      }));
+      link.customButtons = customButtons
+        .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
+        .map(btn => ({
+          id: btn.id || 'btn_' + nanoid(8),
+          label: btn.label || '',
+          url: btn.url || '',
+          iconSlug: btn.iconSlug,
+          iconSvg: btn.iconSvg,
+          iconBrandColor: btn.iconBrandColor,
+          icon: btn.icon,
+        ));
     }
 
     writeData(data);
@@ -502,15 +506,17 @@ app.post('/api/links/move', authMiddleware, (req, res) => {
       if (linkData.description !== undefined) link.description = linkData.description;
       if (linkData.favicon !== undefined) link.favicon = linkData.favicon;
       if (linkData.customButtons !== undefined) {
-        link.customButtons = linkData.customButtons.map(btn => ({
-          id: btn.id || 'btn_' + nanoid(8),
-          label: btn.label || '',
-          url: btn.url || '',
-          iconSlug: btn.iconSlug,
-          iconSvg: btn.iconSvg,
-          iconBrandColor: btn.iconBrandColor,
-          icon: btn.icon,
-        }));
+        link.customButtons = linkData.customButtons
+          .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
+          .map(btn => ({
+            id: btn.id || 'btn_' + nanoid(8),
+            label: btn.label || '',
+            url: btn.url || '',
+            iconSlug: btn.iconSlug,
+            iconSvg: btn.iconSvg,
+            iconBrandColor: btn.iconBrandColor,
+            icon: btn.icon,
+          ));
       }
     }
 

@@ -336,7 +336,7 @@ function handleSubmit() {
       description: form.value.description,
       favicon: form.value.favicon,
       customButtons: form.value.customButtons
-        .filter(b => b.label && b.url)
+        .filter(b => (b.label || b.iconSvg || b.icon) && b.url)
         .map(b => ({
           id: b.id,
           label: b.label,

@@ -44,7 +44,7 @@
         <span v-if="btn.iconSvg" class="btn-icon-svg" v-html="btn.iconSvg"></span>
         <!-- 兼容旧数据的图片图标 -->
         <img v-else-if="btn.icon" :src="btn.icon" class="btn-icon" alt="" @error="$event.target.style.display = 'none'" />
-        <span class="btn-text">{{ btn.label }}</span>
+        <span v-if="btn.label" class="btn-text">{{ btn.label }}</span>
       </a>
     </div>
     <Teleport to="body">
