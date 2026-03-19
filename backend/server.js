@@ -427,6 +427,10 @@ app.post('/api/categories/:catId/subcategories/:subId/links', authMiddleware, (r
         id: 'btn_' + nanoid(8),
         label: btn.label || '',
         url: btn.url || '',
+        iconSlug: btn.iconSlug,
+        iconSvg: btn.iconSvg,
+        iconBrandColor: btn.iconBrandColor,
+        icon: btn.icon,
       })),
     };
     sub.links.push(newLink);
@@ -460,6 +464,10 @@ app.put('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddlew
         id: btn.id || 'btn_' + nanoid(8),
         label: btn.label || '',
         url: btn.url || '',
+        iconSlug: btn.iconSlug,
+        iconSvg: btn.iconSvg,
+        iconBrandColor: btn.iconBrandColor,
+        icon: btn.icon,
       }));
     }
 
@@ -498,6 +506,10 @@ app.post('/api/links/move', authMiddleware, (req, res) => {
           id: btn.id || 'btn_' + nanoid(8),
           label: btn.label || '',
           url: btn.url || '',
+          iconSlug: btn.iconSlug,
+          iconSvg: btn.iconSvg,
+          iconBrandColor: btn.iconBrandColor,
+          icon: btn.icon,
         }));
       }
     }

@@ -335,7 +335,18 @@ function handleSubmit() {
       title: form.value.title,
       description: form.value.description,
       favicon: form.value.favicon,
-      customButtons: form.value.customButtons.filter(b => b.label && b.url),
+      customButtons: form.value.customButtons
+        .filter(b => b.label && b.url)
+        .map(b => ({
+          id: b.id,
+          label: b.label,
+          url: b.url,
+          iconSlug: b.iconSlug,
+          iconSvg: b.iconSvg,
+          iconBrandColor: b.iconBrandColor,
+          // 兼容旧数据
+          icon: b.icon,
+        })),
     },
   })
 }
