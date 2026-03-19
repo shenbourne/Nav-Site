@@ -40,7 +40,11 @@
         rel="noopener noreferrer"
         class="custom-btn"
       >
-        {{ btn.label }}
+        <!-- Simple Icons SVG -->
+        <span v-if="btn.iconSvg" class="btn-icon-svg" v-html="btn.iconSvg"></span>
+        <!-- 兼容旧数据的图片图标 -->
+        <img v-else-if="btn.icon" :src="btn.icon" class="btn-icon" alt="" @error="$event.target.style.display = 'none'" />
+        <span class="btn-text">{{ btn.label }}</span>
       </a>
     </div>
     <Teleport to="body">
@@ -276,6 +280,9 @@ function goToUrl() {
 }
 
 .custom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 500;
@@ -287,6 +294,31 @@ function goToUrl() {
 
 .custom-btn:hover {
   background: var(--color-primary-light);
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.btn-icon-svg {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-icon-svg :deep(svg) {
+  width: 100%;
+  height: 100%;
+}
+
+.btn-text {
+  white-space: nowrap;
 }
 
 .card-tooltip {

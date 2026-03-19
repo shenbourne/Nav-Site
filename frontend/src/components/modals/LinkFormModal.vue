@@ -104,6 +104,36 @@
                   <circle cx="15" cy="18" r="1.5" fill="currentColor"/>
                 </svg>
               </div>
+              <!-- 图标选择 -->
+              <div class="btn-icon-select-wrapper">
+                <button 
+                  type="button" 
+                  class="btn-icon-select" 
+                  @click="openIconPicker(index)"
+                  :title="element.iconSlug || '选择图标'"
+                >
+                  <span v-if="element.iconSvg" class="icon-display" v-html="element.iconSvg"></span>
+                  <span v-else class="icon-placeholder">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                  </span>
+                </button>
+                <button 
+                  v-if="element.iconSvg" 
+                  type="button" 
+                  class="btn-icon-clear"
+                  @click="clearIcon(index)"
+                  title="清除图标"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
               <input v-model="element.label" type="text" placeholder="按钮文字" class="btn-label-input" />
               <input v-model="element.url" type="url" placeholder="https://..." class="btn-url-input" />
               <button type="button" class="btn-remove-row" @click="removeButton(index)" title="移除">
@@ -129,6 +159,15 @@
     @close="iconSelectorVisible = false"
     @select="onIconSelected"
   />
+
+  <!-- Simple Icons 选择器 -->
+  <SimpleIconPicker
+    v-if="simpleIconPickerVisible"
+    :visible="simpleIconPickerVisible"
+    :selected-slug="currentButtonIndex >= 0 ? form.customButtons[currentButtonIndex]?.iconSlug : ''"
+    @close="simpleIconPickerVisible = false"
+    @select="onSimpleIconSelected"
+  />
 </template>
 
 <script setup>
@@ -136,6 +175,7 @@ import { ref, watch, computed } from 'vue'
 import draggable from 'vuedraggable'
 import BaseModal from './BaseModal.vue'
 import IconSelectModal from './IconSelectModal.vue'
+import SimpleIconPicker from './SimpleIconPicker.vue'
 import { useNavStore } from '../../stores/navStore.js'
 
 const props = defineProps({
@@ -154,6 +194,8 @@ const fetchingIcon = ref(false)
 const isEdit = ref(false)
 const iconSelectorVisible = ref(false)
 const matchedIcons = ref([])
+const simpleIconPickerVisible = ref(false)
+const currentButtonIndex = ref(-1)
 
 const form = ref(getDefaultForm())
 
@@ -249,6 +291,29 @@ async function fetchIconFromLocal() {
 
 function onIconSelected(iconUrl) {
   form.value.favicon = iconUrl
+}
+
+function openIconPicker(index) {
+  currentButtonIndex.value = index
+  simpleIconPickerVisible.value = true
+}
+
+function onSimpleIconSelected(iconData) {
+  if (currentButtonIndex.value >= 0) {
+    const button = form.value.customButtons[currentButtonIndex.value]
+    button.iconSlug = iconData.slug
+    button.iconSvg = iconData.svg
+    button.iconBrandColor = iconData.brandColor
+  }
+  simpleIconPickerVisible.value = false
+  currentButtonIndex.value = -1
+}
+
+function clearIcon(index) {
+  const button = form.value.customButtons[index]
+  delete button.iconSlug
+  delete button.iconSvg
+  delete button.iconBrandColor
 }
 
 function addButton() {
@@ -488,6 +553,74 @@ function handleSubmit() {
 
 .drag-dragging {
   opacity: 0.8;
+}
+
+.btn-icon-select-wrapper {
+  position: relative;
+  flex: none;
+}
+
+.btn-icon-select {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.btn-icon-select:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.icon-display {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-display :deep(svg) {
+  width: 100%;
+  height: 100%;
+}
+
+.icon-placeholder {
+  color: var(--color-text-hint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon-clear {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: var(--transition-base);
+}
+
+.btn-icon-select-wrapper:hover .btn-icon-clear {
+  opacity: 1;
+}
+
+.btn-icon-clear:hover {
+  transform: scale(1.1);
 }
 
 .btn-label-input {
