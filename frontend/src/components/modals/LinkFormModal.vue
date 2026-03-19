@@ -83,13 +83,35 @@
           自定义按钮
           <button type="button" class="btn-add-row" @click="addButton">+ 添加</button>
         </label>
-        <div v-for="(btn, i) in form.customButtons" :key="i" class="button-row">
-          <input v-model="btn.label" type="text" placeholder="按钮文字" class="btn-label-input" />
-          <input v-model="btn.url" type="url" placeholder="https://..." class="btn-url-input" />
-          <button type="button" class="btn-remove-row" @click="removeButton(i)" title="移除">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
+        <draggable
+          v-model="form.customButtons"
+          item-key="id"
+          handle=".drag-handle"
+          animation="200"
+          ghost-class="drag-ghost"
+          chosen-class="drag-chosen"
+          drag-class="drag-dragging"
+        >
+          <template #item="{ element, index }">
+            <div class="button-row">
+              <div class="drag-handle" title="拖动排序">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="9" cy="6" r="1.5" fill="currentColor"/>
+                  <circle cx="9" cy="12" r="1.5" fill="currentColor"/>
+                  <circle cx="9" cy="18" r="1.5" fill="currentColor"/>
+                  <circle cx="15" cy="6" r="1.5" fill="currentColor"/>
+                  <circle cx="15" cy="12" r="1.5" fill="currentColor"/>
+                  <circle cx="15" cy="18" r="1.5" fill="currentColor"/>
+                </svg>
+              </div>
+              <input v-model="element.label" type="text" placeholder="按钮文字" class="btn-label-input" />
+              <input v-model="element.url" type="url" placeholder="https://..." class="btn-url-input" />
+              <button type="button" class="btn-remove-row" @click="removeButton(index)" title="移除">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </template>
+        </draggable>
       </div>
 
       <div class="form-actions">
@@ -111,6 +133,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import draggable from 'vuedraggable'
 import BaseModal from './BaseModal.vue'
 import IconSelectModal from './IconSelectModal.vue'
 import { useNavStore } from '../../stores/navStore.js'
@@ -427,6 +450,44 @@ function handleSubmit() {
   gap: 8px;
   margin-bottom: 8px;
   align-items: center;
+}
+
+.drag-handle {
+  width: 24px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--color-text-hint);
+  border-radius: 6px;
+  transition: var(--transition-base);
+}
+
+.drag-handle:hover {
+  background: var(--color-btn-secondary);
+  color: var(--color-text-secondary);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-ghost {
+  opacity: 0.5;
+  background: var(--color-primary-light);
+  border-radius: 8px;
+}
+
+.drag-chosen {
+  background: var(--bg-card);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.drag-dragging {
+  opacity: 0.8;
 }
 
 .btn-label-input {

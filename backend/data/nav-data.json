@@ -52,6 +52,11 @@
                   "id": "btn_001",
                   "label": "Trending",
                   "url": "https://github.com/trending"
+                },
+                {
+                  "id": "btn_BTiNumUe",
+                  "label": "aaa",
+                  "url": "https://github.com"
                 }
               ]
             }
