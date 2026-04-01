@@ -44,6 +44,7 @@
             :showActions="showActions"
             @edit="$emit('editLink', element)"
             @delete="$emit('deleteLink', element)"
+            @showDetail="$emit('showDetail', $event)"
           />
         </template>
       </draggable>
@@ -55,6 +56,7 @@
           :showActions="false"
           @edit="$emit('editLink', link)"
           @delete="$emit('deleteLink', link)"
+          @showDetail="$emit('showDetail', $event)"
         />
       </TransitionGroup>
     </div>
@@ -79,7 +81,7 @@ const props = defineProps({
   subId: { type: String, default: '' },
 })
 
-defineEmits(['edit', 'delete', 'addLink', 'editLink', 'deleteLink'])
+defineEmits(['edit', 'delete', 'addLink', 'editLink', 'deleteLink', 'showDetail'])
 
 const store = useNavStore()
 

@@ -28,6 +28,7 @@
               @addLink="$emit('addLink', cat.id, sub.id)"
               @editLink="(link) => $emit('editLink', link, cat.id, sub.id)"
               @deleteLink="(link) => $emit('deleteLink', link, cat.id, sub.id)"
+              @showDetail="$emit('showDetail', $event)"
             />
           </template>
         </draggable>
@@ -44,6 +45,7 @@
             @addLink="$emit('addLink', cat.id, sub.id)"
             @editLink="(link) => $emit('editLink', link, cat.id, sub.id)"
             @deleteLink="(link) => $emit('deleteLink', link, cat.id, sub.id)"
+            @showDetail="$emit('showDetail', $event)"
           />
         </template>
 
@@ -75,6 +77,7 @@ defineEmits([
   'editLink',
   'deleteLink',
   'addSubCategory',
+  'showDetail',
 ])
 
 const store = useNavStore()

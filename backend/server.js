@@ -415,7 +415,7 @@ app.post('/api/categories/:catId/subcategories/:subId/links', authMiddleware, (r
     const sub = (cat.subCategories || []).find(s => s.id === req.params.subId);
     if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
 
-    const { title, url, description, favicon, customButtons } = req.body;
+    const { title, url, description, favicon, customButtons, platforms, imageGallery, detailDescription } = req.body;
     const newLink = {
       id: 'lnk_' + nanoid(8),
       title: title || '',
@@ -423,6 +423,9 @@ app.post('/api/categories/:catId/subcategories/:subId/links', authMiddleware, (r
       description: description || '',
       favicon: favicon || '',
       order: sub.links.length,
+      platforms: platforms || [],
+      imageGallery: (imageGallery || []).filter(img => img && img.trim()),
+      detailDescription: detailDescription || '',
       customButtons: (customButtons || [])
         .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
         .map(btn => ({
@@ -433,7 +436,7 @@ app.post('/api/categories/:catId/subcategories/:subId/links', authMiddleware, (r
           iconSvg: btn.iconSvg,
           iconBrandColor: btn.iconBrandColor,
           icon: btn.icon,
-        )),
+        })),
     };
     sub.links.push(newLink);
     writeData(data);
@@ -456,11 +459,14 @@ app.put('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddlew
     const link = sub.links.find(l => l.id === req.params.linkId);
     if (!link) return res.status(404).json({ success: false, error: 'Link not found' });
 
-    const { title, url, description, favicon, customButtons } = req.body;
+    const { title, url, description, favicon, customButtons, platforms, imageGallery, detailDescription } = req.body;
     if (title !== undefined) link.title = title;
     if (url !== undefined) link.url = url;
     if (description !== undefined) link.description = description;
     if (favicon !== undefined) link.favicon = favicon;
+    if (platforms !== undefined) link.platforms = platforms || [];
+    if (imageGallery !== undefined) link.imageGallery = (imageGallery || []).filter(img => img && img.trim());
+    if (detailDescription !== undefined) link.detailDescription = detailDescription || '';
     if (customButtons !== undefined) {
       link.customButtons = customButtons
         .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
@@ -472,7 +478,7 @@ app.put('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddlew
           iconSvg: btn.iconSvg,
           iconBrandColor: btn.iconBrandColor,
           icon: btn.icon,
-        ));
+        }));
     }
 
     writeData(data);
@@ -505,6 +511,9 @@ app.post('/api/links/move', authMiddleware, (req, res) => {
       if (linkData.url !== undefined) link.url = linkData.url;
       if (linkData.description !== undefined) link.description = linkData.description;
       if (linkData.favicon !== undefined) link.favicon = linkData.favicon;
+      if (linkData.platforms !== undefined) link.platforms = linkData.platforms || [];
+      if (linkData.imageGallery !== undefined) link.imageGallery = (linkData.imageGallery || []).filter(img => img && img.trim());
+      if (linkData.detailDescription !== undefined) link.detailDescription = linkData.detailDescription || '';
       if (linkData.customButtons !== undefined) {
         link.customButtons = linkData.customButtons
           .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
@@ -516,7 +525,7 @@ app.post('/api/links/move', authMiddleware, (req, res) => {
             iconSvg: btn.iconSvg,
             iconBrandColor: btn.iconBrandColor,
             icon: btn.icon,
-          ));
+          }));
       }
     }
 

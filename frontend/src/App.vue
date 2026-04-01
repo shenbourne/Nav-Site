@@ -28,6 +28,7 @@
               :showActions="authStore.isLoggedIn"
               @edit="openLinkModal(link, link.categoryId, link.subCategoryId)"
               @delete="openDeleteModal('link', link, link.categoryId, link.subCategoryId)"
+              @showDetail="handleShowDetail"
             />
           </div>
           <div class="empty-search" v-else>
@@ -47,6 +48,7 @@
           @editLink="(link, catId, subId) => openLinkModal(link, catId, subId)"
           @deleteLink="(link, catId, subId) => openDeleteModal('link', link, catId, subId)"
           @addSubCategory="(catId) => openSubCategoryModal(catId)"
+          @showDetail="handleShowDetail"
         />
       </template>
 
@@ -67,6 +69,7 @@
                 @addLink="openLinkModal(null, cat.id, sub.id)"
                 @editLink="(link) => openLinkModal(link, cat.id, sub.id)"
                 @deleteLink="(link) => openDeleteModal('link', link, cat.id, sub.id)"
+                @showDetail="handleShowDetail"
               />
             </template>
           </template>
@@ -95,6 +98,7 @@
                 @addLink="openLinkModal(null, activeCategory.id, sub.id)"
                 @editLink="(link) => openLinkModal(link, activeCategory.id, sub.id)"
                 @deleteLink="(link) => openDeleteModal('link', link, activeCategory.id, sub.id)"
+                @showDetail="handleShowDetail"
               />
             </template>
           </draggable>
@@ -111,6 +115,7 @@
               @addLink="openLinkModal(null, activeCategory.id, sub.id)"
               @editLink="(link) => openLinkModal(link, activeCategory.id, sub.id)"
               @deleteLink="(link) => openDeleteModal('link', link, activeCategory.id, sub.id)"
+              @showDetail="handleShowDetail"
             />
           </template>
 
@@ -187,6 +192,13 @@
       @submit="handleLinkSubmit"
     />
 
+    <!-- Link Detail Modal -->
+    <LinkDetailModal
+      :visible="linkDetailModalVisible"
+      :link="currentDetailLink"
+      @close="linkDetailModalVisible = false"
+    />
+
     <!-- Confirm Delete Modal -->
     <ConfirmModal
       :visible="deleteModalVisible"
@@ -205,6 +217,13 @@
     <ChangeUsernameModal
       :visible="changeUsernameModalVisible"
       @close="changeUsernameModalVisible = false"
+    />
+
+    <!-- Link Detail Modal -->
+    <LinkDetailModal
+      :visible="linkDetailModalVisible"
+      :link="currentDetailLink"
+      @close="linkDetailModalVisible = false"
     />
   </div>
 </template>
@@ -226,6 +245,7 @@ import AdminModal from './components/modals/AdminModal.vue'
 import CategoryFormModal from './components/modals/CategoryFormModal.vue'
 import SubCategoryFormModal from './components/modals/SubCategoryFormModal.vue'
 import LinkFormModal from './components/modals/LinkFormModal.vue'
+import LinkDetailModal from './components/modals/LinkDetailModal.vue'
 import ChangePasswordModal from './components/modals/ChangePasswordModal.vue'
 import ChangeUsernameModal from './components/modals/ChangeUsernameModal.vue'
 import ConfirmModal from './components/modals/ConfirmModal.vue'
@@ -294,6 +314,15 @@ const changePasswordModalVisible = ref(false)
 
 // --- Change username modal ---
 const changeUsernameModalVisible = ref(false)
+
+// --- Link Detail modal ---
+const linkDetailModalVisible = ref(false)
+const currentDetailLink = ref({ title: '', url: '' })
+
+function handleShowDetail(link) {
+  currentDetailLink.value = link
+  linkDetailModalVisible.value = true
+}
 
 // --- Category modal ---
 const categoryModalVisible = ref(false)

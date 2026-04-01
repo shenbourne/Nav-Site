@@ -1,5 +1,5 @@
 <template>
-  <div class="link-card" @click="goToUrl" @mouseenter="showTooltip" @mouseleave="hideTooltip" @mousemove="moveTooltip">
+  <div class="link-card" @click="showDetail" @mouseenter="showTooltip" @mouseleave="hideTooltip" @mousemove="moveTooltip">
     <div class="card-favicon">
       <img
         v-if="!faviconError"
@@ -54,7 +54,7 @@
         :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }"
       >
         <div class="tooltip-title">{{ link.title }}</div>
-        <div class="tooltip-desc" v-if="link.description" v-html="parsedDescription"></div>
+        <div class="tooltip-desc" v-if="link.description">{{ link.description }}</div>
       </div>
     </Teleport>
   </div>
@@ -68,45 +68,13 @@ const props = defineProps({
   showActions: { type: Boolean, default: false },
 })
 
-defineEmits(['edit', 'delete'])
+const emit = defineEmits(['edit', 'delete', 'showDetail'])
 
 const faviconError = ref(false)
 const tooltipVisible = ref(false)
 const tooltipX = ref(0)
 const tooltipY = ref(0)
 let tooltipTimer = null
-
-const parsedDescription = computed(() => {
-  const text = props.link.description || ''
-  if (!text) return ''
-  
-  // 转义 HTML 特殊字符
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  
-  // 解析图片语法 ![alt](url)
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="tooltip-img" />')
-  
-  // 解析分隔线 --- 或 *** 或 ___
-  html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '<hr class="tooltip-hr" />')
-  
-  // 解析代码语法 `code`
-  html = html.replace(/`([^`]+)`/g, '<code class="tooltip-code">$1</code>')
-  
-  // 解析强调语法 **bold** 或 __bold__
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="tooltip-strong">$1</strong>')
-  html = html.replace(/__([^_]+)__/g, '<strong class="tooltip-strong">$1</strong>')
-  
-  // 解析斜体语法 *italic* 或 _italic_
-  html = html.replace(/\*([^*]+)\*/g, '<em class="tooltip-em">$1</em>')
-  html = html.replace(/_([^_]+)_/g, '<em class="tooltip-em">$1</em>')
-  
-  // 解析换行符，每行用 div 包裹
-  const lines = html.split('\n')
-  return lines.map(line => `<div class="tooltip-line">${line || '&nbsp;'}</div>`).join('')
-})
 
 function showTooltip() {
   tooltipTimer = setTimeout(() => {
@@ -127,6 +95,10 @@ function moveTooltip(e) {
 onBeforeUnmount(() => {
   clearTimeout(tooltipTimer)
 })
+
+function showDetail() {
+  emit('showDetail', props.link)
+}
 
 const displayUrl = computed(() => {
   try {
@@ -150,12 +122,6 @@ const fallbackColor = computed(() => {
   }
   return colors[Math.abs(hash) % colors.length]
 })
-
-function goToUrl() {
-  if (props.link.url) {
-    window.open(props.link.url, '_blank', 'noopener,noreferrer')
-  }
-}
 </script>
 
 <style scoped>
@@ -346,43 +312,5 @@ function goToUrl() {
   color: var(--color-text-secondary);
   line-height: 1.5;
   word-break: break-word;
-}
-
-.tooltip-desc :deep(.tooltip-line) {
-  margin-bottom: 0.5em;
-}
-
-.tooltip-desc :deep(.tooltip-line:last-child) {
-  margin-bottom: 0;
-}
-
-.tooltip-desc :deep(.tooltip-strong) {
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.tooltip-desc :deep(.tooltip-em) {
-  font-style: italic;
-}
-
-.tooltip-desc :deep(.tooltip-code) {
-  font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 11px;
-  background: var(--bg-section);
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: var(--color-primary);
-}
-
-.tooltip-desc :deep(.tooltip-hr) {
-  border: none;
-  border-top: 1px solid var(--color-border);
-  margin: 8px 0;
-}
-
-.tooltip-desc :deep(.tooltip-img) {
-  max-width: 100%;
-  border-radius: 4px;
-  margin: 4px 0;
 }
 </style>
