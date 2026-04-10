@@ -591,4 +591,40 @@ onUnmounted(() => {
   border-top: 1px solid var(--color-border);
   margin: 16px 0;
 }
+
+/* 表格样式 */
+.detail-content :deep(.md-table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+}
+
+.detail-content :deep(.md-table thead) {
+  background: var(--bg-section);
+}
+
+.detail-content :deep(.md-th) {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.detail-content :deep(.md-td) {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.detail-content :deep(.md-table tbody tr:nth-child(even)) {
+  background: var(--bg-section);
+}
+
+.detail-content :deep(.md-table tbody tr:hover) {
+  background: var(--color-primary-light);
+}
 </style>
