@@ -76,8 +76,7 @@
       <!-- Favicon Preview -->
       <div class="form-group">
         <label>图标网址</label>
-        <div class="favicon-row">
-          <input v-model="form.favicon" type="text" placeholder="https://example.com/favicon.ico" />
+        <div class="favicon-actions">
           <button
             type="button"
             class="btn btn-fetch-icon"
@@ -87,8 +86,30 @@
             <span v-if="fetchingIcon" class="spinner-small"></span>
             <span v-else>本地获取</span>
           </button>
+          <button
+            type="button"
+            class="btn btn-dashboard-icons"
+            @click="openDashboardIconPicker"
+          >
+            Dashboard Icons
+          </button>
+        </div>
+        
+        <!-- 亮色图标 -->
+        <div class="favicon-row">
+          <span class="favicon-label">亮色</span>
+          <input v-model="form.favicon" type="text" placeholder="亮色主题图标 URL" />
           <div class="favicon-preview" v-if="form.favicon">
             <img :src="form.favicon" @error="($event.target.style.display = 'none')" />
+          </div>
+        </div>
+        
+        <!-- 暗色图标 -->
+        <div class="favicon-row">
+          <span class="favicon-label">暗色</span>
+          <input v-model="form.faviconDark" type="text" placeholder="暗色主题图标 URL（可选）" />
+          <div class="favicon-preview" v-if="form.faviconDark">
+            <img :src="form.faviconDark" @error="($event.target.style.display = 'none')" />
           </div>
         </div>
       </div>
@@ -245,6 +266,14 @@
     @close="simpleIconPickerVisible = false"
     @select="onSimpleIconSelected"
   />
+
+  <!-- Dashboard Icons 选择器 -->
+  <DashboardIconPicker
+    v-if="dashboardIconPickerVisible"
+    :visible="dashboardIconPickerVisible"
+    @close="dashboardIconPickerVisible = false"
+    @select="onDashboardIconSelected"
+  />
 </template>
 
 <script setup>
@@ -253,6 +282,7 @@ import draggable from 'vuedraggable'
 import BaseModal from './BaseModal.vue'
 import IconSelectModal from './IconSelectModal.vue'
 import SimpleIconPicker from './SimpleIconPicker.vue'
+import DashboardIconPicker from './DashboardIconPicker.vue'
 import { useNavStore } from '../../stores/navStore.js'
 
 const props = defineProps({
@@ -272,6 +302,7 @@ const isEdit = ref(false)
 const iconSelectorVisible = ref(false)
 const matchedIcons = ref([])
 const simpleIconPickerVisible = ref(false)
+const dashboardIconPickerVisible = ref(false)
 const currentButtonIndex = ref(-1)
 
 // 支持平台选项
@@ -292,7 +323,8 @@ function getDefaultForm() {
     title: '',
     description: '',
     platforms: [],
-    favicon: '',
+    favicon: '',        // 亮色主题图标
+    faviconDark: '',    // 暗色主题图标（可选）
     imageGallery: [],
     detailDescription: '',
     categoryId: '',
@@ -326,7 +358,8 @@ watch(
         title: props.link.title,
         description: props.link.description,
         platforms: props.link.platforms || [],
-        favicon: props.link.favicon,
+        favicon: props.link.favicon || '',
+        faviconDark: props.link.faviconDark || '',
         imageGallery: (props.link.imageGallery || []).map((url, index) => ({ id: 'img_' + index, url })),
         detailDescription: props.link.detailDescription || '',
         categoryId: props.categoryId,
@@ -386,6 +419,26 @@ function onIconSelected(iconUrl) {
   form.value.favicon = iconUrl
 }
 
+function openDashboardIconPicker() {
+  dashboardIconPickerVisible.value = true
+}
+
+function onDashboardIconSelected(iconData) {
+  // iconData 包含 light 和 dark 两个 URL
+  if (iconData.light) {
+    form.value.favicon = iconData.light
+  }
+  if (iconData.dark) {
+    form.value.faviconDark = iconData.dark
+  }
+  // 如果没有 dark，只设置 light
+  if (!iconData.light && iconData.url) {
+    form.value.favicon = iconData.url
+  }
+  
+  dashboardIconPickerVisible.value = false
+}
+
 function openIconPicker(index) {
   currentButtonIndex.value = index
   simpleIconPickerVisible.value = true
@@ -438,6 +491,7 @@ function handleSubmit() {
       description: form.value.description,
       platforms: form.value.platforms,
       favicon: form.value.favicon,
+      faviconDark: form.value.faviconDark,
       imageGallery: form.value.imageGallery.map(img => img.url).filter(url => url && url.trim()),
       detailDescription: form.value.detailDescription,
       customButtons: form.value.customButtons
@@ -567,6 +621,54 @@ function handleSubmit() {
 .btn-fetch-icon:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-dashboard-icons {
+  padding: 10px 14px;
+  background: #6366f1;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-base);
+}
+
+.btn-dashboard-icons:hover {
+  background: #4f46e5;
+}
+
+.favicon-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.favicon-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.favicon-row:last-child {
+  margin-bottom: 0;
+}
+
+.favicon-label {
+  width: 36px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.favicon-row input {
+  flex: 1;
 }
 
 .spinner-small {

@@ -6,7 +6,7 @@ const { nanoid } = require('nanoid');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const { fetchMeta, matchIconsFromSource } = require('./services/meta-fetcher');
+const { fetchMeta, matchIconsFromSource, searchDashboardIcons } = require('./services/meta-fetcher');
 
 const app = express();
 const PORT = 3000;
@@ -415,13 +415,14 @@ app.post('/api/categories/:catId/subcategories/:subId/links', authMiddleware, (r
     const sub = (cat.subCategories || []).find(s => s.id === req.params.subId);
     if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
 
-    const { title, url, description, favicon, customButtons, platforms, imageGallery, detailDescription } = req.body;
+    const { title, url, description, favicon, faviconDark, customButtons, platforms, imageGallery, detailDescription } = req.body;
     const newLink = {
       id: 'lnk_' + nanoid(8),
       title: title || '',
       url: url || '',
       description: description || '',
       favicon: favicon || '',
+      faviconDark: faviconDark || '',
       order: sub.links.length,
       platforms: platforms || [],
       imageGallery: (imageGallery || []).filter(img => img && img.trim()),
@@ -459,11 +460,12 @@ app.put('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddlew
     const link = sub.links.find(l => l.id === req.params.linkId);
     if (!link) return res.status(404).json({ success: false, error: 'Link not found' });
 
-    const { title, url, description, favicon, customButtons, platforms, imageGallery, detailDescription } = req.body;
+    const { title, url, description, favicon, faviconDark, customButtons, platforms, imageGallery, detailDescription } = req.body;
     if (title !== undefined) link.title = title;
     if (url !== undefined) link.url = url;
     if (description !== undefined) link.description = description;
     if (favicon !== undefined) link.favicon = favicon;
+    if (faviconDark !== undefined) link.faviconDark = faviconDark || '';
     if (platforms !== undefined) link.platforms = platforms || [];
     if (imageGallery !== undefined) link.imageGallery = (imageGallery || []).filter(img => img && img.trim());
     if (detailDescription !== undefined) link.detailDescription = detailDescription || '';
@@ -511,6 +513,7 @@ app.post('/api/links/move', authMiddleware, (req, res) => {
       if (linkData.url !== undefined) link.url = linkData.url;
       if (linkData.description !== undefined) link.description = linkData.description;
       if (linkData.favicon !== undefined) link.favicon = linkData.favicon;
+      if (linkData.faviconDark !== undefined) link.faviconDark = linkData.faviconDark || '';
       if (linkData.platforms !== undefined) link.platforms = linkData.platforms || [];
       if (linkData.imageGallery !== undefined) link.imageGallery = (linkData.imageGallery || []).filter(img => img && img.trim());
       if (linkData.detailDescription !== undefined) link.detailDescription = linkData.detailDescription || '';
@@ -647,6 +650,22 @@ app.post('/api/match-icons', authMiddleware, async (req, res) => {
 
     const matchedIcons = await matchIconsFromSource(url, { forceRefresh: true });
     res.json({ success: true, data: matchedIcons });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- Dashboard Icons search route (protected) ---
+
+app.post('/api/search-dashboard-icons', authMiddleware, async (req, res) => {
+  try {
+    const { query, limit } = req.body;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ success: false, error: 'Query is required' });
+    }
+
+    const icons = await searchDashboardIcons(query, { limit: limit || 20 });
+    res.json({ success: true, data: icons });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

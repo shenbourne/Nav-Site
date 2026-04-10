@@ -255,4 +255,95 @@ async function fetchMeta(url, options = {}) {
   return result;
 }
 
-module.exports = { fetchMeta, matchIconsFromSource };
+// ========== Dashboard Icons 支持 ==========
+
+// Dashboard Icons 配置
+const DASHBOARD_ICONS_BASE_URL = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons';
+const DASHBOARD_ICONS_METADATA_URL = `${DASHBOARD_ICONS_BASE_URL}/metadata.json`;
+
+// 缓存 Dashboard Icons metadata
+let dashboardIconsMetadataCache = null;
+let dashboardIconsMetadataCacheTime = 0;
+const DASHBOARD_ICONS_CACHE_TTL = 60 * 60 * 1000; // 1小时缓存
+
+/**
+ * 获取 Dashboard Icons 的 metadata
+ * @param {boolean} forceRefresh - 是否强制刷新缓存
+ * @returns {Promise<Object>} 图标元数据对象（key-value 结构）
+ */
+async function getDashboardIconsMetadata(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && dashboardIconsMetadataCache && (now - dashboardIconsMetadataCacheTime) < DASHBOARD_ICONS_CACHE_TTL) {
+    return dashboardIconsMetadataCache;
+  }
+
+  try {
+    const { data } = await axios.get(DASHBOARD_ICONS_METADATA_URL, { timeout: 15000 });
+    // metadata.json 是一个对象，键是图标名称
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      dashboardIconsMetadataCache = data;
+      dashboardIconsMetadataCacheTime = now;
+      return data;
+    }
+    return dashboardIconsMetadataCache || {};
+  } catch (err) {
+    console.error('获取 Dashboard Icons metadata 失败:', err.message);
+    return dashboardIconsMetadataCache || {};
+  }
+}
+
+/**
+ * 搜索 Dashboard Icons
+ * @param {string} query - 搜索关键词
+ * @param {Object} options - 搜索选项
+ * @param {number} options.limit - 返回结果数量限制（默认20）
+ * @returns {Promise<Array>} 匹配的图标列表
+ */
+async function searchDashboardIcons(query, { limit = 20 } = {}) {
+  if (!query || !query.trim()) return [];
+  
+  const metadata = await getDashboardIconsMetadata();
+  if (!metadata || typeof metadata !== 'object' || Object.keys(metadata).length === 0) {
+    return [];
+  }
+
+  const searchTerm = query.toLowerCase().trim();
+  const iconNames = Object.keys(metadata);
+  
+  const matches = iconNames
+    .filter(name => {
+      const icon = metadata[name];
+      const nameMatch = name.toLowerCase().includes(searchTerm);
+      const aliasesMatch = icon.aliases?.some(alias => 
+        alias.toLowerCase().includes(searchTerm)
+      );
+      return nameMatch || aliasesMatch;
+    })
+    .slice(0, limit)
+    .map(name => {
+      const icon = metadata[name];
+      const baseName = name;
+      
+      // 检查是否有变体（通过 colors 字段）
+      const hasLightVariant = !!icon.colors?.light;
+      const hasDarkVariant = !!icon.colors?.dark;
+      const hasVariants = hasLightVariant || hasDarkVariant;
+      
+      return {
+        name: baseName,
+        url: `${DASHBOARD_ICONS_BASE_URL}/svg/${baseName}.svg`,
+        pngUrl: `${DASHBOARD_ICONS_BASE_URL}/png/${baseName}.png`,
+        webpUrl: `${DASHBOARD_ICONS_BASE_URL}/webp/${baseName}.webp`,
+        // colors 字段定义的变体关系（如 github: { dark: 'github', light: 'github-light' }）
+        colors: icon.colors || null,
+        // 兼容性：是否有变体
+        hasVariants,
+        // 别名信息，用于搜索提示
+        aliases: icon.aliases || [],
+      };
+    });
+
+  return matches;
+}
+
+module.exports = { fetchMeta, matchIconsFromSource, searchDashboardIcons };

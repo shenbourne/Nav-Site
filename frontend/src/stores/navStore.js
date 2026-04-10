@@ -197,6 +197,11 @@ export const useNavStore = defineStore('nav', () => {
     return res.success ? res.data : []
   }
 
+  async function searchDashboardIcons(query, limit = 20) {
+    const { data: res } = await api.post('/search-dashboard-icons', { query, limit })
+    return res.success ? res.data : []
+  }
+
   // --- Site settings ---
 
   async function updateSettings(payload) {
@@ -280,6 +285,7 @@ export const useNavStore = defineStore('nav', () => {
     deleteLink,
     fetchMeta,
     matchIcons,
+    searchDashboardIcons,
     updateSettings,
     uploadLogo,
     reorderCategories,

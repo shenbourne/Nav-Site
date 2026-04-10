@@ -3,7 +3,7 @@
     <div class="card-favicon">
       <img
         v-if="!faviconError"
-        :src="link.favicon"
+        :src="displayFavicon"
         :alt="link.title"
         @error="faviconError = true"
         class="favicon-img"
@@ -61,7 +61,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, watch } from 'vue'
+import { useUiStore } from '../stores/uiStore.js'
 
 const props = defineProps({
   link: { type: Object, required: true },
@@ -70,11 +71,29 @@ const props = defineProps({
 
 const emit = defineEmits(['edit', 'delete', 'showDetail'])
 
+const uiStore = useUiStore()
 const faviconError = ref(false)
 const tooltipVisible = ref(false)
 const tooltipX = ref(0)
 const tooltipY = ref(0)
 let tooltipTimer = null
+
+// 根据当前主题选择对应的图标
+const displayFavicon = computed(() => {
+  const isDark = uiStore.theme === 'dark' ||
+    (uiStore.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  
+  // 暗色主题且有暗色图标时使用暗色图标，否则使用亮色图标
+  if (isDark && props.link.faviconDark) {
+    return props.link.faviconDark
+  }
+  return props.link.favicon
+})
+
+// 当图标 URL 变化时（如主题切换），重置错误状态
+watch(displayFavicon, () => {
+  faviconError.value = false
+})
 
 function showTooltip() {
   tooltipTimer = setTimeout(() => {

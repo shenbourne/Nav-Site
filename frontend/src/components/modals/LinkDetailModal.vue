@@ -5,8 +5,8 @@
       <div class="link-header">
         <div class="header-icon">
           <img
-            v-if="link.favicon && !faviconError"
-            :src="link.favicon"
+            v-if="displayFavicon && !faviconError"
+            :src="displayFavicon"
             :alt="link.title"
             @error="faviconError = true"
           />
@@ -118,6 +118,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import BaseModal from './BaseModal.vue'
 import { renderMarkdown } from '../../composables/useMarkdown.js'
+import { useUiStore } from '../../stores/uiStore.js'
 
 const props = defineProps({
   visible: Boolean,
@@ -126,8 +127,27 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-// Favicon 处理
+const uiStore = useUiStore()
+
+// Favicon 处理 - 根据主题选择亮色/暗色图标
 const faviconError = ref(false)
+
+const displayFavicon = computed(() => {
+  const isDark = uiStore.theme === 'dark' ||
+    (uiStore.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  
+  // 暗色主题且有暗色图标时使用暗色图标，否则使用亮色图标
+  if (isDark && props.link.faviconDark) {
+    return props.link.faviconDark
+  }
+  return props.link.favicon
+})
+
+// 当图标 URL 变化时（如主题切换），重置错误状态
+watch(displayFavicon, () => {
+  faviconError.value = false
+})
+
 const fallbackLetter = computed(() => {
   return (props.link.title || props.link.url || '?').charAt(0).toUpperCase()
 })
