@@ -202,6 +202,11 @@ export const useNavStore = defineStore('nav', () => {
     return res.success ? res.data : []
   }
 
+  async function searchLobeIcons(query, limit = 20) {
+    const { data: res } = await api.post('/search-lobe-icons', { query, limit })
+    return res.success ? res.data : []
+  }
+
   // --- Site settings ---
 
   async function updateSettings(payload) {
@@ -286,6 +291,7 @@ export const useNavStore = defineStore('nav', () => {
     fetchMeta,
     matchIcons,
     searchDashboardIcons,
+    searchLobeIcons,
     updateSettings,
     uploadLogo,
     reorderCategories,

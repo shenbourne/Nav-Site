@@ -93,6 +93,13 @@
           >
             Dashboard Icons
           </button>
+          <button
+            type="button"
+            class="btn btn-lobe-icons"
+            @click="openLobeIconPicker"
+          >
+            LobeHub Icons
+          </button>
         </div>
         
         <!-- 亮色图标 -->
@@ -274,6 +281,14 @@
     @close="dashboardIconPickerVisible = false"
     @select="onDashboardIconSelected"
   />
+
+  <!-- LobeHub Icons 选择器 -->
+  <LobeIconPicker
+    v-if="lobeIconPickerVisible"
+    :visible="lobeIconPickerVisible"
+    @close="lobeIconPickerVisible = false"
+    @select="onLobeIconSelected"
+  />
 </template>
 
 <script setup>
@@ -283,6 +298,7 @@ import BaseModal from './BaseModal.vue'
 import IconSelectModal from './IconSelectModal.vue'
 import SimpleIconPicker from './SimpleIconPicker.vue'
 import DashboardIconPicker from './DashboardIconPicker.vue'
+import LobeIconPicker from './LobeIconPicker.vue'
 import { useNavStore } from '../../stores/navStore.js'
 
 const props = defineProps({
@@ -303,6 +319,7 @@ const iconSelectorVisible = ref(false)
 const matchedIcons = ref([])
 const simpleIconPickerVisible = ref(false)
 const dashboardIconPickerVisible = ref(false)
+const lobeIconPickerVisible = ref(false)
 const currentButtonIndex = ref(-1)
 
 // 支持平台选项
@@ -437,6 +454,21 @@ function onDashboardIconSelected(iconData) {
   }
   
   dashboardIconPickerVisible.value = false
+}
+
+function openLobeIconPicker() {
+  lobeIconPickerVisible.value = true
+}
+
+function onLobeIconSelected(iconData) {
+  // LobeHub Icons 自动填充亮色和暗色
+  if (iconData.light) {
+    form.value.favicon = iconData.light
+  }
+  if (iconData.dark) {
+    form.value.faviconDark = iconData.dark
+  }
+  lobeIconPickerVisible.value = false
 }
 
 function openIconPicker(index) {
@@ -640,6 +672,25 @@ function handleSubmit() {
 
 .btn-dashboard-icons:hover {
   background: #4f46e5;
+}
+
+.btn-lobe-icons {
+  padding: 10px 14px;
+  background: #10b981;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-base);
+}
+
+.btn-lobe-icons:hover {
+  background: #059669;
 }
 
 .favicon-actions {

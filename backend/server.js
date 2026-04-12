@@ -6,7 +6,7 @@ const { nanoid } = require('nanoid');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const { fetchMeta, matchIconsFromSource, searchDashboardIcons } = require('./services/meta-fetcher');
+const { fetchMeta, matchIconsFromSource, searchDashboardIcons, searchLobeIcons } = require('./services/meta-fetcher');
 
 const app = express();
 const PORT = 3000;
@@ -665,6 +665,22 @@ app.post('/api/search-dashboard-icons', authMiddleware, async (req, res) => {
     }
 
     const icons = await searchDashboardIcons(query, { limit: limit || 20 });
+    res.json({ success: true, data: icons });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- LobeHub Icons search route (protected) ---
+
+app.post('/api/search-lobe-icons', authMiddleware, async (req, res) => {
+  try {
+    const { query, limit } = req.body;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ success: false, error: 'Query is required' });
+    }
+
+    const icons = await searchLobeIcons(query, { limit: limit || 20 });
     res.json({ success: true, data: icons });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

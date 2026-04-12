@@ -346,4 +346,78 @@ async function searchDashboardIcons(query, { limit = 20 } = {}) {
   return matches;
 }
 
-module.exports = { fetchMeta, matchIconsFromSource, searchDashboardIcons };
+// ========== LobeHub Icons 支持 ==========
+
+const LOBEICONS_BASE_URL = 'https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages';
+
+// 缓存 LobeHub Icons 列表
+let lobeIconsCache = null;
+let lobeIconsCacheTime = 0;
+const LOBEICONS_CACHE_TTL = 60 * 60 * 1000; // 1小时缓存
+
+/**
+ * 获取 LobeHub Icons 列表
+ * @param {boolean} forceRefresh - 是否强制刷新缓存
+ * @returns {Promise<Array>} 图标名称数组
+ */
+async function getLobeIconsList(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && lobeIconsCache && (now - lobeIconsCacheTime) < LOBEICONS_CACHE_TTL) {
+    return lobeIconsCache;
+  }
+
+  try {
+    // 获取 light 目录下的所有图标
+    const { data } = await axios.get(
+      'https://api.github.com/repos/lobehub/lobe-icons/contents/packages/static-png/light',
+      { timeout: 15000 }
+    );
+    
+    // 提取图标名称（去掉 .png 后缀）
+    lobeIconsCache = data
+      .filter(file => file.name.endsWith('.png'))
+      .map(file => file.name.replace('.png', ''));
+    
+    lobeIconsCacheTime = now;
+    return lobeIconsCache;
+  } catch (err) {
+    console.error('获取 LobeHub Icons 列表失败:', err.message);
+    return lobeIconsCache || [];
+  }
+}
+
+/**
+ * 搜索 LobeHub Icons
+ * @param {string} query - 搜索关键词
+ * @param {Object} options - 搜索选项
+ * @param {number} options.limit - 返回结果数量限制（默认20）
+ * @returns {Promise<Array>} 匹配的图标列表
+ */
+async function searchLobeIcons(query, { limit = 20 } = {}) {
+  if (!query || !query.trim()) return [];
+  
+  const icons = await getLobeIconsList();
+  if (!icons || icons.length === 0) {
+    return [];
+  }
+
+  const searchTerm = query.toLowerCase().trim();
+  
+  const matches = icons
+    .filter(name => name.toLowerCase().includes(searchTerm))
+    .slice(0, limit)
+    .map(name => {
+      return {
+        name: name,
+        light: `${LOBEICONS_BASE_URL}/static-png/light/${name}.png`,
+        dark: `${LOBEICONS_BASE_URL}/static-png/dark/${name}.png`,
+        svgLight: `${LOBEICONS_BASE_URL}/static-svg/light/${name}.svg`,
+        svgDark: `${LOBEICONS_BASE_URL}/static-svg/dark/${name}.svg`,
+        source: 'lobehub'
+      };
+    });
+
+  return matches;
+}
+
+module.exports = { fetchMeta, matchIconsFromSource, searchDashboardIcons, searchLobeIcons };

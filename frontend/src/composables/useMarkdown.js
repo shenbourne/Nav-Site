@@ -120,6 +120,7 @@ function processTables(html) {
   const result = []
   let inTable = false
   let tableRows = []
+  let alignments = []
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -130,10 +131,21 @@ function processTables(html) {
       if (!inTable) {
         inTable = true
         tableRows = []
+        alignments = []
       }
       
-      // 跳过分隔行（|---|---|）
-      if (trimmed.replace(/\|/g, '').replace(/[-\s:]/g, '').length === 0) {
+      // 检查是否是分隔行（|---|---| 或 |:---:|:---:|:---:|）
+      const separatorContent = trimmed.replace(/\|/g, '').trim()
+      if (/^[-:\s]+$/.test(separatorContent) && separatorContent.includes('-')) {
+        // 解析对齐方式
+        const cells = trimmed.split('|').map(c => c.trim()).filter(c => c)
+        alignments = cells.map(cell => {
+          const left = cell.startsWith(':')
+          const right = cell.endsWith(':')
+          if (left && right) return 'center'
+          if (right) return 'right'
+          return 'left'
+        })
         continue
       }
       
@@ -145,8 +157,9 @@ function processTables(html) {
     } else {
       if (inTable && tableRows.length > 0) {
         // 输出表格
-        result.push(renderTable(tableRows))
+        result.push(renderTable(tableRows, alignments))
         tableRows = []
+        alignments = []
         inTable = false
       }
       result.push(line)
@@ -155,7 +168,7 @@ function processTables(html) {
   
   // 处理末尾的表格
   if (inTable && tableRows.length > 0) {
-    result.push(renderTable(tableRows))
+    result.push(renderTable(tableRows, alignments))
   }
   
   return result.join('\n')
@@ -164,28 +177,35 @@ function processTables(html) {
 /**
  * 渲染表格
  * @param {string[][]} rows - 表格行数据
+ * @param {string[]} alignments - 列对齐方式
  * @returns {string} HTML 表格
  */
-function renderTable(rows) {
+function renderTable(rows, alignments = []) {
   if (rows.length === 0) return ''
   
   const header = rows[0]
   const body = rows.slice(1)
   
   let html = '<table class="md-table"><thead><tr>'
-  header.forEach(cell => {
-    html += `<th class="md-th">${cell}</th>`
+  header.forEach((cell, index) => {
+    const align = alignments[index] || 'left'
+    const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
+    html += `<th class="md-th"${style}>${cell}</th>`
   })
   html += '</tr></thead><tbody>'
   
   body.forEach(row => {
     html += '<tr>'
-    row.forEach(cell => {
-      html += `<td class="md-td">${cell}</td>`
+    row.forEach((cell, index) => {
+      const align = alignments[index] || 'left'
+      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
+      html += `<td class="md-td"${style}>${cell}</td>`
     })
     // 补齐单元格
     for (let i = row.length; i < header.length; i++) {
-      html += '<td class="md-td"></td>'
+      const align = alignments[i] || 'left'
+      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
+      html += `<td class="md-td"${style}></td>`
     }
     html += '</tr>'
   })
