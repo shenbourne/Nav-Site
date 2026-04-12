@@ -356,21 +356,29 @@ let lobeIconsCacheTime = 0;
 const LOBEICONS_CACHE_TTL = 60 * 60 * 1000; // 1小时缓存
 
 /**
- * 获取 LobeHub Icons 列表
+ * 获取 LobeHub Icons 列表（带重试）
  * @param {boolean} forceRefresh - 是否强制刷新缓存
+ * @param {number} retries - 重试次数
  * @returns {Promise<Array>} 图标名称数组
  */
-async function getLobeIconsList(forceRefresh = false) {
+async function getLobeIconsList(forceRefresh = false, retries = 2) {
   const now = Date.now();
   if (!forceRefresh && lobeIconsCache && (now - lobeIconsCacheTime) < LOBEICONS_CACHE_TTL) {
     return lobeIconsCache;
   }
 
   try {
-    // 获取 light 目录下的所有图标
+    // 尝试通过 jsDelivr 的 GitHub 文件列表（更快，但有限制）
+    // 或者使用 GitHub API
     const { data } = await axios.get(
       'https://api.github.com/repos/lobehub/lobe-icons/contents/packages/static-png/light',
-      { timeout: 15000 }
+      { 
+        timeout: 30000,  // 增加超时到 30 秒
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'nav-site-icon-fetcher'
+        }
+      }
     );
     
     // 提取图标名称（去掉 .png 后缀）
@@ -379,10 +387,25 @@ async function getLobeIconsList(forceRefresh = false) {
       .map(file => file.name.replace('.png', ''));
     
     lobeIconsCacheTime = now;
+    console.log(`[LobeHub Icons] 获取到 ${lobeIconsCache.length} 个图标`);
     return lobeIconsCache;
   } catch (err) {
     console.error('获取 LobeHub Icons 列表失败:', err.message);
-    return lobeIconsCache || [];
+    
+    // 如果有缓存，即使过期也返回
+    if (lobeIconsCache && lobeIconsCache.length > 0) {
+      console.log('[LobeHub Icons] 使用过期的缓存数据');
+      return lobeIconsCache;
+    }
+    
+    // 重试
+    if (retries > 0) {
+      console.log(`[LobeHub Icons] 将在 1 秒后重试... (剩余 ${retries} 次)`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return getLobeIconsList(forceRefresh, retries - 1);
+    }
+    
+    return [];
   }
 }
 

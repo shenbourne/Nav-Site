@@ -79,26 +79,15 @@
         <div class="favicon-actions">
           <button
             type="button"
-            class="btn btn-fetch-icon"
-            :disabled="fetchingIcon || !form.url"
-            @click="fetchIconFromLocal"
+            class="btn btn-unified-icon"
+            @click="openUnifiedIconPicker"
           >
-            <span v-if="fetchingIcon" class="spinner-small"></span>
-            <span v-else>本地获取</span>
-          </button>
-          <button
-            type="button"
-            class="btn btn-dashboard-icons"
-            @click="openDashboardIconPicker"
-          >
-            Dashboard Icons
-          </button>
-          <button
-            type="button"
-            class="btn btn-lobe-icons"
-            @click="openLobeIconPicker"
-          >
-            LobeHub Icons
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            选择图标
           </button>
         </div>
         
@@ -256,16 +245,7 @@
     </form>
   </BaseModal>
 
-  <!-- 图标选择弹窗（放在 BaseModal 外，通过 Teleport 渲染到 body） -->
-  <IconSelectModal 
-    v-if="iconSelectorVisible"
-    :visible="iconSelectorVisible"
-    :icons="matchedIcons"
-    @close="iconSelectorVisible = false"
-    @select="onIconSelected"
-  />
-
-  <!-- Simple Icons 选择器 -->
+  <!-- Simple Icons 选择器（用于自定义按钮） -->
   <SimpleIconPicker
     v-if="simpleIconPickerVisible"
     :visible="simpleIconPickerVisible"
@@ -274,20 +254,12 @@
     @select="onSimpleIconSelected"
   />
 
-  <!-- Dashboard Icons 选择器 -->
-  <DashboardIconPicker
-    v-if="dashboardIconPickerVisible"
-    :visible="dashboardIconPickerVisible"
-    @close="dashboardIconPickerVisible = false"
-    @select="onDashboardIconSelected"
-  />
-
-  <!-- LobeHub Icons 选择器 -->
-  <LobeIconPicker
-    v-if="lobeIconPickerVisible"
-    :visible="lobeIconPickerVisible"
-    @close="lobeIconPickerVisible = false"
-    @select="onLobeIconSelected"
+  <!-- 统一图标选择器 -->
+  <UnifiedIconPicker
+    v-if="unifiedIconPickerVisible"
+    :visible="unifiedIconPickerVisible"
+    @close="unifiedIconPickerVisible = false"
+    @select="onUnifiedIconSelected"
   />
 </template>
 
@@ -295,10 +267,8 @@
 import { ref, watch, computed } from 'vue'
 import draggable from 'vuedraggable'
 import BaseModal from './BaseModal.vue'
-import IconSelectModal from './IconSelectModal.vue'
 import SimpleIconPicker from './SimpleIconPicker.vue'
-import DashboardIconPicker from './DashboardIconPicker.vue'
-import LobeIconPicker from './LobeIconPicker.vue'
+import UnifiedIconPicker from './UnifiedIconPicker.vue'
 import { useNavStore } from '../../stores/navStore.js'
 
 const props = defineProps({
@@ -313,13 +283,9 @@ const emit = defineEmits(['close', 'submit'])
 
 const store = useNavStore()
 const fetching = ref(false)
-const fetchingIcon = ref(false)
 const isEdit = ref(false)
-const iconSelectorVisible = ref(false)
-const matchedIcons = ref([])
 const simpleIconPickerVisible = ref(false)
-const dashboardIconPickerVisible = ref(false)
-const lobeIconPickerVisible = ref(false)
+const unifiedIconPickerVisible = ref(false)
 const currentButtonIndex = ref(-1)
 
 // 支持平台选项
@@ -413,62 +379,19 @@ async function autoFetch() {
   }
 }
 
-async function fetchIconFromLocal() {
-  if (!form.value.url) return
-  fetchingIcon.value = true
-  try {
-    const icons = await store.matchIcons(form.value.url)
-    if (icons && icons.length > 0) {
-      matchedIcons.value = icons
-      iconSelectorVisible.value = true
-    } else {
-      alert('未匹配到任何图标')
-    }
-  } catch (err) {
-    console.error('本地获取图标失败:', err)
-    alert('获取图标失败，请检查网络或稍后重试')
-  } finally {
-    fetchingIcon.value = false
-  }
+function openUnifiedIconPicker() {
+  unifiedIconPickerVisible.value = true
 }
 
-function onIconSelected(iconUrl) {
-  form.value.favicon = iconUrl
-}
-
-function openDashboardIconPicker() {
-  dashboardIconPickerVisible.value = true
-}
-
-function onDashboardIconSelected(iconData) {
-  // iconData 包含 light 和 dark 两个 URL
+function onUnifiedIconSelected(iconData) {
+  // 统一处理所有图标源的选择
   if (iconData.light) {
     form.value.favicon = iconData.light
   }
   if (iconData.dark) {
     form.value.faviconDark = iconData.dark
   }
-  // 如果没有 dark，只设置 light
-  if (!iconData.light && iconData.url) {
-    form.value.favicon = iconData.url
-  }
-  
-  dashboardIconPickerVisible.value = false
-}
-
-function openLobeIconPicker() {
-  lobeIconPickerVisible.value = true
-}
-
-function onLobeIconSelected(iconData) {
-  // LobeHub Icons 自动填充亮色和暗色
-  if (iconData.light) {
-    form.value.favicon = iconData.light
-  }
-  if (iconData.dark) {
-    form.value.faviconDark = iconData.dark
-  }
-  lobeIconPickerVisible.value = false
+  unifiedIconPickerVisible.value = false
 }
 
 function openIconPicker(index) {
@@ -631,66 +554,22 @@ function handleSubmit() {
   cursor: not-allowed;
 }
 
-.btn-fetch-icon {
+.btn-unified-icon {
   padding: 10px 16px;
-  background: var(--color-btn-secondary);
-  color: var(--color-text-primary);
+  background: var(--color-primary);
+  color: #fff;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
-  min-width: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: var(--transition-base);
 }
 
-.btn-fetch-icon:hover:not(:disabled) {
-  background: var(--color-btn-secondary-hover);
-}
-
-.btn-fetch-icon:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-dashboard-icons {
-  padding: 10px 14px;
-  background: #6366f1;
-  color: #fff;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  min-width: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition-base);
-}
-
-.btn-dashboard-icons:hover {
-  background: #4f46e5;
-}
-
-.btn-lobe-icons {
-  padding: 10px 14px;
-  background: #10b981;
-  color: #fff;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  min-width: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: var(--transition-base);
-}
-
-.btn-lobe-icons:hover {
-  background: #059669;
+.btn-unified-icon:hover {
+  background: #3d7bc7;
 }
 
 .favicon-actions {
