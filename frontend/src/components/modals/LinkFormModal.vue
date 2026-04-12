@@ -75,19 +75,14 @@
 
       <!-- Favicon Preview -->
       <div class="form-group">
-        <label>图标网址</label>
-        <div class="favicon-actions">
+        <div class="favicon-header">
+          <label>图标网址</label>
           <button
             type="button"
             class="btn btn-unified-icon"
             @click="openUnifiedIconPicker"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
-            </svg>
-            选择图标
+            搜索图标库
           </button>
         </div>
         
@@ -570,6 +565,17 @@ function handleSubmit() {
 
 .btn-unified-icon:hover {
   background: #3d7bc7;
+}
+
+.favicon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.favicon-header label {
+  margin-bottom: 0;
 }
 
 .favicon-actions {
