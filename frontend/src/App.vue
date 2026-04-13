@@ -263,7 +263,7 @@ watchEffect(() => {
 
   const link = document.querySelector("link[rel~='icon']")
   if (link) {
-    link.href = store.siteSettings.logoUrl || '/vite.svg'
+    link.href = store.accelerateUrl(store.siteSettings.logoUrl) || '/vite.svg'
   }
 })
 

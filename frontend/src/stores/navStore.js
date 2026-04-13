@@ -7,7 +7,7 @@ export const useNavStore = defineStore('nav', () => {
   const loading = ref(false)
   const activeTabId = ref('')
   const searchQuery = ref('')
-  const siteSettings = ref({ title: 'My Nav 的主页', logoUrl: '' })
+  const siteSettings = ref({ title: 'My Nav 的主页', logoUrl: '', githubJsdelivr: false })
 
   // Get all links across all categories for "全部" tab
   const allLinks = computed(() => {
@@ -227,6 +227,15 @@ export const useNavStore = defineStore('nav', () => {
     }
   }
 
+  // 将 GitHub raw 直链转换为 jsdelivr 加速链接
+  function accelerateUrl(url) {
+    if (!url || !siteSettings.value.githubJsdelivr) return url
+    return url.replace(
+      /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/,
+      'https://cdn.jsdelivr.net/gh/$1/$2@$3/$4'
+    )
+  }
+
   // --- Reorder ---
 
   async function reorderCategories(orderedIds) {
@@ -294,6 +303,7 @@ export const useNavStore = defineStore('nav', () => {
     searchLobeIcons,
     updateSettings,
     uploadLogo,
+    accelerateUrl,
     reorderCategories,
     reorderSubCategories,
     reorderLinks,

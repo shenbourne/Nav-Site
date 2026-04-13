@@ -71,7 +71,7 @@
           
           <div class="gallery-image-wrapper">
             <img
-              :src="link.imageGallery[currentImageIndex]"
+              :src="navStore.accelerateUrl(link.imageGallery[currentImageIndex])"
               :alt="`${link.title} 图片 ${currentImageIndex + 1}`"
               @error="handleImageError"
             />
@@ -119,6 +119,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import BaseModal from './BaseModal.vue'
 import { renderMarkdown } from '../../composables/useMarkdown.js'
 import { useUiStore } from '../../stores/uiStore.js'
+import { useNavStore } from '../../stores/navStore.js'
 
 const props = defineProps({
   visible: Boolean,
@@ -128,6 +129,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const uiStore = useUiStore()
+const navStore = useNavStore()
 
 // Favicon 处理 - 根据主题选择亮色/暗色图标
 const faviconError = ref(false)
@@ -135,12 +137,12 @@ const faviconError = ref(false)
 const displayFavicon = computed(() => {
   const isDark = uiStore.theme === 'dark' ||
     (uiStore.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  
+
   // 暗色主题且有暗色图标时使用暗色图标，否则使用亮色图标
   if (isDark && props.link.faviconDark) {
-    return props.link.faviconDark
+    return navStore.accelerateUrl(props.link.faviconDark)
   }
-  return props.link.favicon
+  return navStore.accelerateUrl(props.link.favicon)
 })
 
 // 当图标 URL 变化时（如主题切换），重置错误状态

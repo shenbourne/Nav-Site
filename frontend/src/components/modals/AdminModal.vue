@@ -43,6 +43,14 @@
           />
         </div>
         <div class="form-row">
+          <label class="form-label flex-label">
+            <span>GitHub 直链加速</span>
+            <input type="checkbox" v-model="settingsForm.githubJsdelivr" class="toggle-checkbox" />
+            <span class="toggle-switch"></span>
+          </label>
+          <p class="form-hint">开启后，使用 jsdelivr CDN 加速 raw.githubusercontent.com 的直链</p>
+        </div>
+        <div class="form-row">
           <label class="form-label">站点 Logo</label>
           <div class="logo-mode-tabs">
             <button
@@ -176,7 +184,7 @@ defineEmits([
 const selectedCatId = ref('')
 
 // --- Site settings ---
-const settingsForm = ref({ title: '', logoUrl: '' })
+const settingsForm = ref({ title: '', logoUrl: '', githubJsdelivr: false })
 const logoInputMode = ref('url')
 const logoFile = ref(null)
 const settingsLoading = ref(false)
@@ -212,7 +220,7 @@ async function handleSaveSettings() {
     } else {
       await navStore.updateSettings({ logoUrl: settingsForm.value.logoUrl })
     }
-    await navStore.updateSettings({ title: settingsForm.value.title })
+    await navStore.updateSettings({ title: settingsForm.value.title, githubJsdelivr: settingsForm.value.githubJsdelivr })
     settingsSuccess.value = '设置已保存'
     setTimeout(() => { settingsSuccess.value = '' }, 2000)
   } catch (err) {
@@ -241,6 +249,7 @@ watch(
       settingsForm.value = {
         title: navStore.siteSettings.title || '',
         logoUrl: navStore.siteSettings.logoUrl || '',
+        githubJsdelivr: navStore.siteSettings.githubJsdelivr || false,
       }
       logoFile.value = null
       settingsError.value = ''
@@ -447,6 +456,54 @@ watch(
   font-weight: 500;
   color: var(--color-text-secondary);
   margin-bottom: 6px;
+}
+
+.flex-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.form-hint {
+  font-size: 11px;
+  color: var(--color-text-hint);
+  margin: 0 0 6px;
+}
+
+.toggle-checkbox {
+  display: none;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--color-border);
+  border-radius: 10px;
+  transition: var(--transition-base);
+  flex-shrink: 0;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: var(--transition-base);
+}
+
+.toggle-checkbox:checked + .toggle-switch {
+  background: var(--color-primary);
+}
+
+.toggle-checkbox:checked + .toggle-switch::after {
+  left: 18px;
 }
 
 .form-input {

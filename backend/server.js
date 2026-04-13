@@ -572,13 +572,13 @@ app.delete('/api/categories/:catId/subcategories/:subId/links/:linkId', authMidd
 
 // --- Site settings routes ---
 
-const DEFAULT_SETTINGS = { title: 'My Nav 的主页', logoUrl: '' };
+const DEFAULT_SETTINGS = { title: 'My Nav 的主页', logoUrl: '', githubJsdelivr: false };
 
 // GET site settings (public)
 app.get('/api/settings', (req, res) => {
   try {
     const data = readData();
-    res.json({ success: true, data: data.siteSettings || DEFAULT_SETTINGS });
+    res.json({ success: true, data: { ...DEFAULT_SETTINGS, ...data.siteSettings } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -590,9 +590,10 @@ app.put('/api/settings', authMiddleware, (req, res) => {
     const data = readData();
     if (!data.siteSettings) data.siteSettings = { ...DEFAULT_SETTINGS };
 
-    const { title, logoUrl } = req.body;
+    const { title, logoUrl, githubJsdelivr } = req.body;
     if (title !== undefined) data.siteSettings.title = title;
     if (logoUrl !== undefined) data.siteSettings.logoUrl = logoUrl;
+    if (githubJsdelivr !== undefined) data.siteSettings.githubJsdelivr = !!githubJsdelivr;
 
     writeData(data);
     res.json({ success: true, data: data.siteSettings });
