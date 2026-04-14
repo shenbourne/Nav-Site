@@ -572,7 +572,14 @@ app.delete('/api/categories/:catId/subcategories/:subId/links/:linkId', authMidd
 
 // --- Site settings routes ---
 
-const DEFAULT_SETTINGS = { title: 'My Nav 的主页', logoUrl: '', githubJsdelivr: false };
+const DEFAULT_SETTINGS = {
+  title: 'My Nav 的主页',
+  logoUrl: '',
+  githubJsdelivr: false,
+  galleryAutoPlay: true,
+  galleryAutoPlayInterval: 5000,
+  galleryTransition: 'fade',
+};
 
 // GET site settings (public)
 app.get('/api/settings', (req, res) => {
@@ -590,10 +597,13 @@ app.put('/api/settings', authMiddleware, (req, res) => {
     const data = readData();
     if (!data.siteSettings) data.siteSettings = { ...DEFAULT_SETTINGS };
 
-    const { title, logoUrl, githubJsdelivr } = req.body;
+    const { title, logoUrl, githubJsdelivr, galleryAutoPlay, galleryAutoPlayInterval, galleryTransition } = req.body;
     if (title !== undefined) data.siteSettings.title = title;
     if (logoUrl !== undefined) data.siteSettings.logoUrl = logoUrl;
     if (githubJsdelivr !== undefined) data.siteSettings.githubJsdelivr = !!githubJsdelivr;
+    if (galleryAutoPlay !== undefined) data.siteSettings.galleryAutoPlay = !!galleryAutoPlay;
+    if (galleryAutoPlayInterval !== undefined) data.siteSettings.galleryAutoPlayInterval = Number(galleryAutoPlayInterval) || 5000;
+    if (galleryTransition !== undefined) data.siteSettings.galleryTransition = galleryTransition;
 
     writeData(data);
     res.json({ success: true, data: data.siteSettings });

@@ -7,7 +7,14 @@ export const useNavStore = defineStore('nav', () => {
   const loading = ref(false)
   const activeTabId = ref('')
   const searchQuery = ref('')
-  const siteSettings = ref({ title: 'My Nav 的主页', logoUrl: '', githubJsdelivr: false })
+  const siteSettings = ref({
+    title: 'My Nav 的主页',
+    logoUrl: '',
+    githubJsdelivr: false,
+    galleryAutoPlay: true,
+    galleryAutoPlayInterval: 5000,
+    galleryTransition: 'fade',
+  })
 
   // Get all links across all categories for "全部" tab
   const allLinks = computed(() => {

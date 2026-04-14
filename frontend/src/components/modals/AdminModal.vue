@@ -51,6 +51,35 @@
           <p class="form-hint">开启后，使用 jsdelivr CDN 加速 raw.githubusercontent.com 的直链</p>
         </div>
         <div class="form-row">
+          <label class="form-label flex-label">
+            <span>图片集自动滚动</span>
+            <input type="checkbox" v-model="settingsForm.galleryAutoPlay" class="toggle-checkbox" />
+            <span class="toggle-switch"></span>
+          </label>
+          <p class="form-hint">开启后，链接详情中的图片集将自动轮播</p>
+        </div>
+        <div class="form-row form-row-flex">
+          <div class="form-col">
+            <label class="form-label">自动滚动间隔（秒）</label>
+            <input
+              class="form-input"
+              type="number"
+              min="1"
+              max="60"
+              v-model.number="settingsForm.galleryAutoPlayInterval"
+              placeholder="例如 5"
+            />
+          </div>
+          <div class="form-col">
+            <label class="form-label">图片切换方式</label>
+            <select v-model="settingsForm.galleryTransition" class="form-input">
+              <option value="fade">淡入淡出</option>
+              <option value="slide">平移滑动</option>
+              <option value="none">无动画</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
           <label class="form-label">站点 Logo</label>
           <div class="logo-mode-tabs">
             <button
@@ -184,7 +213,14 @@ defineEmits([
 const selectedCatId = ref('')
 
 // --- Site settings ---
-const settingsForm = ref({ title: '', logoUrl: '', githubJsdelivr: false })
+const settingsForm = ref({
+  title: '',
+  logoUrl: '',
+  githubJsdelivr: false,
+  galleryAutoPlay: true,
+  galleryAutoPlayInterval: 5,
+  galleryTransition: 'fade',
+})
 const logoInputMode = ref('url')
 const logoFile = ref(null)
 const settingsLoading = ref(false)
@@ -220,7 +256,13 @@ async function handleSaveSettings() {
     } else {
       await navStore.updateSettings({ logoUrl: settingsForm.value.logoUrl })
     }
-    await navStore.updateSettings({ title: settingsForm.value.title, githubJsdelivr: settingsForm.value.githubJsdelivr })
+    await navStore.updateSettings({
+      title: settingsForm.value.title,
+      githubJsdelivr: settingsForm.value.githubJsdelivr,
+      galleryAutoPlay: settingsForm.value.galleryAutoPlay,
+      galleryAutoPlayInterval: (settingsForm.value.galleryAutoPlayInterval || 5) * 1000,
+      galleryTransition: settingsForm.value.galleryTransition,
+    })
     settingsSuccess.value = '设置已保存'
     setTimeout(() => { settingsSuccess.value = '' }, 2000)
   } catch (err) {
@@ -250,6 +292,9 @@ watch(
         title: navStore.siteSettings.title || '',
         logoUrl: navStore.siteSettings.logoUrl || '',
         githubJsdelivr: navStore.siteSettings.githubJsdelivr || false,
+        galleryAutoPlay: navStore.siteSettings.galleryAutoPlay !== false,
+        galleryAutoPlayInterval: (navStore.siteSettings.galleryAutoPlayInterval || 5000) / 1000,
+        galleryTransition: navStore.siteSettings.galleryTransition || 'fade',
       }
       logoFile.value = null
       settingsError.value = ''
@@ -448,6 +493,16 @@ watch(
 
 .form-row {
   margin-bottom: 12px;
+}
+
+.form-row-flex {
+  display: flex;
+  gap: 12px;
+}
+
+.form-col {
+  flex: 1;
+  min-width: 0;
 }
 
 .form-label {

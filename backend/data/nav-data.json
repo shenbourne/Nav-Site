@@ -2,7 +2,10 @@
   "siteSettings": {
     "title": "Nav Site",
     "logoUrl": "https://github.githubassets.com/favicons/favicon.svg",
-    "githubJsdelivr": true
+    "githubJsdelivr": true,
+    "galleryAutoPlay": true,
+    "galleryAutoPlayInterval": 3000,
+    "galleryTransition": "fade"
   },
   "categories": [
     {

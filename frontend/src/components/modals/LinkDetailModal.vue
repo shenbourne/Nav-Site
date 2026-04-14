@@ -70,11 +70,14 @@
           </button>
           
           <div class="gallery-image-wrapper">
-            <img
-              :src="navStore.accelerateUrl(link.imageGallery[currentImageIndex])"
-              :alt="`${link.title} 图片 ${currentImageIndex + 1}`"
-              @error="handleImageError"
-            />
+            <Transition :name="galleryTransitionName" mode="out-in">
+              <img
+                :key="currentImageIndex"
+                :src="navStore.accelerateUrl(link.imageGallery[currentImageIndex])"
+                :alt="`${link.title} 图片 ${currentImageIndex + 1}`"
+                @error="handleImageError"
+              />
+            </Transition>
           </div>
           
           <button v-if="link.imageGallery.length > 1" class="gallery-nav next" @click="nextImage">
@@ -121,6 +124,8 @@ import { renderMarkdown } from '../../composables/useMarkdown.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { useNavStore } from '../../stores/navStore.js'
 
+const navStore = useNavStore()
+
 const props = defineProps({
   visible: Boolean,
   link: { type: Object, required: true },
@@ -129,7 +134,6 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const uiStore = useUiStore()
-const navStore = useNavStore()
 
 // Favicon 处理 - 根据主题选择亮色/暗色图标
 const faviconError = ref(false)
@@ -181,6 +185,13 @@ function getPlatformIcon(platform) {
 const currentImageIndex = ref(0)
 let autoPlayInterval = null
 
+const galleryTransitionName = computed(() => {
+  const t = navStore.siteSettings.galleryTransition
+  if (t === 'slide') return 'gallery-slide'
+  if (t === 'fade') return 'gallery-fade'
+  return ''
+})
+
 function nextImage() {
   if (!props.link.imageGallery?.length) return
   currentImageIndex.value = (currentImageIndex.value + 1) % props.link.imageGallery.length
@@ -196,8 +207,11 @@ function goToImage(index) {
 }
 
 function startAutoPlay() {
-  if (props.link.imageGallery?.length > 1) {
-    autoPlayInterval = setInterval(nextImage, 5000)
+  pauseAutoPlay()
+  const enabled = navStore.siteSettings.galleryAutoPlay !== false
+  const interval = navStore.siteSettings.galleryAutoPlayInterval || 5000
+  if (enabled && props.link.imageGallery?.length > 1) {
+    autoPlayInterval = setInterval(nextImage, interval)
   }
 }
 
@@ -486,6 +500,33 @@ onUnmounted(() => {
 
 .dot:hover {
   background: rgba(255, 255, 255, 0.8);
+}
+
+/* 图片切换动画 - 淡入淡出 */
+.gallery-fade-enter-active,
+.gallery-fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.gallery-fade-enter-from,
+.gallery-fade-leave-to {
+  opacity: 0;
+}
+
+/* 图片切换动画 - 平移滑动 */
+.gallery-slide-enter-active,
+.gallery-slide-leave-active {
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.gallery-slide-enter-from {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.gallery-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-30px);
 }
 
 /* 详细介绍 */
