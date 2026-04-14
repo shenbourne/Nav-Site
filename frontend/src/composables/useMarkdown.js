@@ -121,6 +121,7 @@ function processTables(html) {
   let inTable = false
   let tableRows = []
   let alignments = []
+  let hasSeparator = false
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -132,6 +133,7 @@ function processTables(html) {
         inTable = true
         tableRows = []
         alignments = []
+        hasSeparator = false
       }
       
       // 检查是否是分隔行（|---|---| 或 |:---:|:---:|:---:|）
@@ -146,6 +148,7 @@ function processTables(html) {
           if (right) return 'right'
           return 'left'
         })
+        hasSeparator = true
         continue
       }
       
@@ -157,9 +160,10 @@ function processTables(html) {
     } else {
       if (inTable && tableRows.length > 0) {
         // 输出表格
-        result.push(renderTable(tableRows, alignments))
+        result.push(renderTable(tableRows, alignments, hasSeparator))
         tableRows = []
         alignments = []
+        hasSeparator = false
         inTable = false
       }
       result.push(line)
@@ -168,7 +172,7 @@ function processTables(html) {
   
   // 处理末尾的表格
   if (inTable && tableRows.length > 0) {
-    result.push(renderTable(tableRows, alignments))
+    result.push(renderTable(tableRows, alignments, hasSeparator))
   }
   
   return result.join('\n')
@@ -178,23 +182,37 @@ function processTables(html) {
  * 渲染表格
  * @param {string[][]} rows - 表格行数据
  * @param {string[]} alignments - 列对齐方式
+ * @param {boolean} hasHeader - 是否将第一行作为表头
  * @returns {string} HTML 表格
  */
-function renderTable(rows, alignments = []) {
+function renderTable(rows, alignments = [], hasHeader = true) {
   if (rows.length === 0) return ''
   
-  const header = rows[0]
-  const body = rows.slice(1)
+  const colCount = Math.max(...rows.map(r => r.length))
   
-  let html = '<table class="md-table"><thead><tr>'
-  header.forEach((cell, index) => {
-    const align = alignments[index] || 'left'
-    const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
-    html += `<th class="md-th"${style}>${cell}</th>`
-  })
-  html += '</tr></thead><tbody>'
+  let html = '<table class="md-table">'
   
-  body.forEach(row => {
+  if (hasHeader && rows.length > 0) {
+    const header = rows[0]
+    html += '<thead><tr>'
+    header.forEach((cell, index) => {
+      const align = alignments[index] || 'left'
+      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
+      html += `<th class="md-th"${style}>${cell}</th>`
+    })
+    // 补齐表头单元格
+    for (let i = header.length; i < colCount; i++) {
+      const align = alignments[i] || 'left'
+      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
+      html += `<th class="md-th"${style}></th>`
+    }
+    html += '</tr></thead>'
+  }
+  
+  const bodyStartIndex = hasHeader ? 1 : 0
+  html += '<tbody>'
+  for (let i = bodyStartIndex; i < rows.length; i++) {
+    const row = rows[i]
     html += '<tr>'
     row.forEach((cell, index) => {
       const align = alignments[index] || 'left'
@@ -202,14 +220,13 @@ function renderTable(rows, alignments = []) {
       html += `<td class="md-td"${style}>${cell}</td>`
     })
     // 补齐单元格
-    for (let i = row.length; i < header.length; i++) {
+    for (let i = row.length; i < colCount; i++) {
       const align = alignments[i] || 'left'
       const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
       html += `<td class="md-td"${style}></td>`
     }
     html += '</tr>'
-  })
-  
+  }
   html += '</tbody></table>'
   return html
 }
