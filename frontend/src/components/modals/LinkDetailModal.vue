@@ -437,13 +437,18 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border-radius: 24px;
+  position: relative;
+
 }
 
 .gallery-image-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #000;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
 }
 
 .gallery-nav {
