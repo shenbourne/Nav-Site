@@ -117,100 +117,121 @@
 
     <div class="admin-section">
       <h4>一级分类管理</h4>
-      <div class="admin-list">
-        <div v-for="cat in categories" :key="cat.id" class="admin-item">
-          <span class="item-icon">{{ cat.icon }}</span>
-          <span class="item-name">{{ cat.name }}</span>
-          <div class="item-actions">
-            <button class="item-btn" @click="$emit('editCategory', cat)" title="编辑">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-            <button class="item-btn danger" @click="$emit('deleteCategory', cat)" title="删除">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-      <button class="add-btn" @click="$emit('addCategory')">
-        + 添加一级分类
-      </button>
-    </div>
-
-    <div class="admin-section" v-if="selectedCategory">
-      <h4>
-        二级分类管理
-        <span class="section-hint">（{{ selectedCategory.icon }} {{ selectedCategory.name }}）</span>
-      </h4>
-      <div class="admin-list" v-if="selectedCategory.subCategories?.length">
-        <div v-for="sub in selectedCategory.subCategories" :key="sub.id" class="admin-item">
-          <span class="item-badge" :style="{ background: sub.color }"></span>
-          <span class="item-name">{{ sub.name }}</span>
-          <div class="item-actions">
-            <template v-if="movingSubId === sub.id">
-              <select v-model="moveTargetCatId" class="move-select">
-                <option value="" disabled>选择目标分类</option>
-                <option v-for="cat in moveTargetCategories" :key="cat.id" :value="cat.id">
-                  {{ cat.icon }} {{ cat.name }}
-                </option>
-              </select>
-              <button class="item-btn confirm" @click="confirmMove(sub)" title="确认移动">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              </button>
-              <button class="item-btn" @click="cancelMove" title="取消">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </template>
-            <template v-else>
-              <button class="item-btn" @click="startMove(sub)" title="移动到其他分类">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </button>
-              <button class="item-btn" @click="$emit('editSubCategory', selectedCategory.id, sub)" title="编辑">
+      <draggable
+        v-model="navStore.categories"
+        item-key="id"
+        :animation="200"
+        ghost-class="sortable-ghost"
+        drag-class="sortable-drag"
+        :move="onCategoryMove"
+        @end="onCategoryDragEnd"
+      >
+        <template #item="{ element: cat }">
+          <div class="admin-item" :class="{ selected: selectedCatId === cat.id }" @click="selectedCatId = cat.id">
+            <svg class="drag-handle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/>
+              <circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>
+            </svg>
+            <span class="item-icon">{{ cat.icon }}</span>
+            <span class="item-name">{{ cat.name }}</span>
+            <div class="item-actions">
+              <button class="item-btn" @click.stop="$emit('editCategory', cat)" title="编辑">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </button>
-              <button class="item-btn danger" @click="$emit('deleteSubCategory', selectedCategory.id, sub)" title="删除">
+              <button class="item-btn danger" @click.stop="$emit('deleteCategory', cat)" title="删除">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
               </button>
-            </template>
+            </div>
           </div>
-        </div>
-      </div>
+        </template>
+      </draggable>
+      <button class="add-btn" @click="$emit('addCategory')">
+        + 添加一级分类
+      </button>
+    </div>
+
+    <div class="admin-section" v-if="selectedNavCategory">
+      <h4>
+        二级分类管理
+        <span class="section-hint">（{{ selectedNavCategory.icon }} {{ selectedNavCategory.name }}）</span>
+      </h4>
+      <draggable
+        v-if="selectedNavCategory.subCategories?.length"
+        v-model="selectedNavCategory.subCategories"
+        item-key="id"
+        :animation="200"
+        ghost-class="sortable-ghost"
+        drag-class="sortable-drag"
+        @end="onSubCategoryDragEnd(selectedNavCategory.id)"
+      >
+        <template #item="{ element: sub }">
+          <div class="admin-item">
+            <svg class="drag-handle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/>
+              <circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>
+            </svg>
+            <span class="item-badge" :style="{ background: sub.color }"></span>
+            <span class="item-name">{{ sub.name }}</span>
+            <div class="item-actions">
+              <template v-if="movingSubId === sub.id">
+                <select v-model="moveTargetCatId" class="move-select">
+                  <option value="" disabled>选择目标分类</option>
+                  <option v-for="cat in moveTargetCategories" :key="cat.id" :value="cat.id">
+                    {{ cat.icon }} {{ cat.name }}
+                  </option>
+                </select>
+                <button class="item-btn confirm" @click="confirmMove(sub)" title="确认移动">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </button>
+                <button class="item-btn" @click="cancelMove" title="取消">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </template>
+              <template v-else>
+                <button class="item-btn" @click="startMove(sub)" title="移动到其他分类">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </button>
+                <button class="item-btn" @click="$emit('editSubCategory', selectedNavCategory.id, sub)" title="编辑">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button class="item-btn danger" @click="$emit('deleteSubCategory', selectedNavCategory.id, sub)" title="删除">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </template>
+            </div>
+          </div>
+        </template>
+      </draggable>
       <div class="empty-sub" v-else>暂无二级分类</div>
-      <button class="add-btn" @click="$emit('addSubCategory', selectedCategory.id)">
+      <button class="add-btn" @click="$emit('addSubCategory', selectedNavCategory.id)">
         + 添加二级分类
       </button>
     </div>
 
-    <div class="category-select" v-if="categoriesWithSubs.length">
-      <label>选择一级分类以管理其二级分类：</label>
-      <select v-model="selectedCatId">
-        <option v-for="cat in categoriesWithSubs" :key="cat.id" :value="cat.id">
-          {{ cat.icon }} {{ cat.name }}
-        </option>
-      </select>
-    </div>
   </BaseModal>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import draggable from 'vuedraggable'
 import BaseModal from './BaseModal.vue'
 import { useNavStore } from '../../stores/navStore.js'
 
@@ -237,6 +258,42 @@ const emit = defineEmits([
 ])
 
 const selectedCatId = ref('')
+
+const selectedNavCategory = computed(() => {
+  return navStore.categories.find(c => c.id === selectedCatId.value)
+})
+
+// --- Drag reorder ---
+function onCategoryMove(evt) {
+  // 禁止拖动 "全部" 分类 (cat_001)
+  if (evt.draggedContext.element.id === 'cat_001') return false
+  // 禁止将其他分类拖到 "全部" 分类前面或作为第一个（如果 all 是第一个的话）
+  if (evt.relatedContext.element?.id === 'cat_001' && evt.to === evt.from) {
+    // 允许在 cat_001 周围移动，但不允许拖到它上面改变它成为第二个
+    // 实际上最简单的做法是只禁止拖拽 cat_001 本身，其他自由拖拽
+  }
+  return true
+}
+
+async function onCategoryDragEnd() {
+  const orderedIds = navStore.categories.map(c => c.id)
+  try {
+    await navStore.reorderCategories(orderedIds)
+  } catch (err) {
+    console.error('Failed to reorder categories:', err)
+  }
+}
+
+async function onSubCategoryDragEnd(catId) {
+  const cat = navStore.categories.find(c => c.id === catId)
+  if (!cat || !cat.subCategories) return
+  const orderedIds = cat.subCategories.map(s => s.id)
+  try {
+    await navStore.reorderSubCategories(catId, orderedIds)
+  } catch (err) {
+    console.error('Failed to reorder sub-categories:', err)
+  }
+}
 
 // --- Move sub-category ---
 const movingSubId = ref('')
@@ -327,9 +384,7 @@ const categoriesWithSubs = computed(() => {
   return props.categories.filter(c => c.id !== 'cat_001')
 })
 
-const selectedCategory = computed(() => {
-  return props.categories.find(c => c.id === selectedCatId.value)
-})
+
 
 watch(
   () => props.visible,
@@ -435,10 +490,20 @@ watch(
   gap: 10px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
 .admin-item:last-child {
   border-bottom: none;
+}
+
+.admin-item:hover {
+  background: var(--color-btn-secondary-hover);
+}
+
+.admin-item.selected {
+  background: var(--color-primary-light);
 }
 
 .item-icon {
@@ -496,6 +561,27 @@ watch(
   color: var(--color-text-primary);
   outline: none;
   max-width: 120px;
+}
+
+.drag-handle {
+  color: var(--color-text-hint);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+  background: var(--color-primary-light);
+}
+
+.sortable-drag {
+  opacity: 0.8;
+  background: var(--bg-card);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .empty-sub {
