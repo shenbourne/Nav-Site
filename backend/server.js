@@ -403,6 +403,41 @@ app.delete('/api/categories/:catId/subcategories/:subId', authMiddleware, (req, 
   }
 });
 
+// POST move sub-category to another category (protected)
+app.post('/api/subcategories/move', authMiddleware, (req, res) => {
+  try {
+    const { subId, fromCatId, toCatId } = req.body;
+    if (!subId || !fromCatId || !toCatId) {
+      return res.status(400).json({ success: false, error: 'subId, fromCatId and toCatId are required' });
+    }
+    if (fromCatId === toCatId) {
+      return res.status(400).json({ success: false, error: 'Source and target category cannot be the same' });
+    }
+
+    const data = readData();
+    const fromCat = data.categories.find(c => c.id === fromCatId);
+    if (!fromCat) return res.status(404).json({ success: false, error: 'Source category not found' });
+
+    const toCat = data.categories.find(c => c.id === toCatId);
+    if (!toCat) return res.status(404).json({ success: false, error: 'Target category not found' });
+
+    const subIdx = (fromCat.subCategories || []).findIndex(s => s.id === subId);
+    if (subIdx === -1) return res.status(404).json({ success: false, error: 'Sub-category not found' });
+
+    const [sub] = fromCat.subCategories.splice(subIdx, 1);
+    fromCat.subCategories.forEach((s, i) => (s.order = i));
+
+    if (!toCat.subCategories) toCat.subCategories = [];
+    sub.order = toCat.subCategories.length;
+    toCat.subCategories.push(sub);
+
+    writeData(data);
+    res.json({ success: true, data: sub });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // --- Link routes ---
 
 // POST add link to sub-category (protected)

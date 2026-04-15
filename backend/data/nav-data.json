@@ -87,12 +87,20 @@
               "faviconDark": "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark/github.png"
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "cat_MEoWT5kw",
+      "name": "开发工具",
+      "icon": "📁",
+      "order": 2,
+      "subCategories": [
         {
           "id": "sub__kcrMuT5",
           "name": "友情链接",
           "color": "#4a90d9",
-          "order": 1,
+          "order": 0,
           "links": [
             {
               "id": "lnk_iRXnndDN",

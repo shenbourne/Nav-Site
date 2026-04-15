@@ -163,6 +163,7 @@
       @addSubCategory="openSubCategoryModal($event)"
       @editSubCategory="(catId, sub) => openSubCategoryModal(catId, sub)"
       @deleteSubCategory="(catId, sub) => openDeleteModal('subCategory', sub, catId)"
+      @moveSubCategory="handleMoveSubCategory"
     />
 
     <!-- Category Modal -->
@@ -367,6 +368,14 @@ async function handleSubCategorySubmit(payload) {
     subCategoryModalVisible.value = false
   } catch (err) {
     alert(err.response?.data?.error || '操作失败')
+  }
+}
+
+async function handleMoveSubCategory(subId, fromCatId, toCatId) {
+  try {
+    await store.moveSubCategory(subId, fromCatId, toCatId)
+  } catch (err) {
+    alert(err.response?.data?.error || '移动失败')
   }
 }
 

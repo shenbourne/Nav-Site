@@ -152,18 +152,43 @@
           <span class="item-badge" :style="{ background: sub.color }"></span>
           <span class="item-name">{{ sub.name }}</span>
           <div class="item-actions">
-            <button class="item-btn" @click="$emit('editSubCategory', selectedCategory.id, sub)" title="编辑">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-            <button class="item-btn danger" @click="$emit('deleteSubCategory', selectedCategory.id, sub)" title="删除">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
-            </button>
+            <template v-if="movingSubId === sub.id">
+              <select v-model="moveTargetCatId" class="move-select">
+                <option value="" disabled>选择目标分类</option>
+                <option v-for="cat in moveTargetCategories" :key="cat.id" :value="cat.id">
+                  {{ cat.icon }} {{ cat.name }}
+                </option>
+              </select>
+              <button class="item-btn confirm" @click="confirmMove(sub)" title="确认移动">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </button>
+              <button class="item-btn" @click="cancelMove" title="取消">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </template>
+            <template v-else>
+              <button class="item-btn" @click="startMove(sub)" title="移动到其他分类">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+              <button class="item-btn" @click="$emit('editSubCategory', selectedCategory.id, sub)" title="编辑">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="item-btn danger" @click="$emit('deleteSubCategory', selectedCategory.id, sub)" title="删除">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -197,7 +222,7 @@ const props = defineProps({
   username: { type: String, default: 'admin' },
 })
 
-defineEmits([
+const emit = defineEmits([
   'close',
   'logout',
   'changePassword',
@@ -208,9 +233,35 @@ defineEmits([
   'addSubCategory',
   'editSubCategory',
   'deleteSubCategory',
+  'moveSubCategory',
 ])
 
 const selectedCatId = ref('')
+
+// --- Move sub-category ---
+const movingSubId = ref('')
+const moveTargetCatId = ref('')
+
+const moveTargetCategories = computed(() => {
+  return props.categories.filter(c => c.id !== 'cat_001' && c.id !== selectedCatId.value)
+})
+
+function startMove(sub) {
+  movingSubId.value = sub.id
+  moveTargetCatId.value = ''
+}
+
+function cancelMove() {
+  movingSubId.value = ''
+  moveTargetCatId.value = ''
+}
+
+function confirmMove(sub) {
+  if (!moveTargetCatId.value) return
+  emit('moveSubCategory', sub.id, selectedCatId.value, moveTargetCatId.value)
+  movingSubId.value = ''
+  moveTargetCatId.value = ''
+}
 
 // --- Site settings ---
 const settingsForm = ref({
@@ -429,6 +480,22 @@ watch(
 .item-btn.danger:hover {
   background: #fef0ef;
   color: var(--color-danger);
+}
+
+.item-btn.confirm:hover {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.move-select {
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--color-text-primary);
+  outline: none;
+  max-width: 120px;
 }
 
 .empty-sub {

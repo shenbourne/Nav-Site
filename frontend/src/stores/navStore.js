@@ -135,6 +135,21 @@ export const useNavStore = defineStore('nav', () => {
     }
   }
 
+  async function moveSubCategory(subId, fromCatId, toCatId) {
+    const { data: res } = await api.post('/subcategories/move', { subId, fromCatId, toCatId })
+    if (res.success) {
+      const fromCat = categories.value.find(c => c.id === fromCatId)
+      if (fromCat && fromCat.subCategories) {
+        fromCat.subCategories = fromCat.subCategories.filter(s => s.id !== subId)
+      }
+      const toCat = categories.value.find(c => c.id === toCatId)
+      if (toCat) {
+        if (!toCat.subCategories) toCat.subCategories = []
+        toCat.subCategories.push(res.data)
+      }
+    }
+  }
+
   // --- Links ---
 
   async function addLink(catId, subId, payload) {
@@ -300,6 +315,7 @@ export const useNavStore = defineStore('nav', () => {
     addSubCategory,
     updateSubCategory,
     deleteSubCategory,
+    moveSubCategory,
     addLink,
     updateLink,
     moveLink,
