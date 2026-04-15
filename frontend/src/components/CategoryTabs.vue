@@ -70,7 +70,7 @@ useWheelTab({
   display: flex;
   justify-content: center;
   gap: 8px;
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   overflow-x: auto;
   padding: 0 10px 12px;
