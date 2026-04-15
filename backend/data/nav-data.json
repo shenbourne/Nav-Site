@@ -3,9 +3,13 @@
     "title": "Nav Site",
     "logoUrl": "https://github.githubassets.com/favicons/favicon.svg",
     "githubJsdelivr": true,
-    "galleryAutoPlay": true,
+    "galleryAutoPlay": false,
     "galleryAutoPlayInterval": 3000,
-    "galleryTransition": "fade"
+    "galleryTransition": "slide",
+    "galleryMasonryAutoScroll": true,
+    "galleryMasonryScrollSpeed": 50,
+    "galleryDefaultMode": "masonry",
+    "galleryCarouselTimeout": 10000
   },
   "categories": [
     {
@@ -45,9 +49,12 @@
               "customButtons": [],
               "platforms": [],
               "imageGallery": [
-                "https://www.google.com/chrome/static/images/intl/zh_Hans_CN/dev-components/chrome-gallery-1.webp"
+                "https://cdn.jsdelivr.net/gh/shenbourne/Image-Hosting-Service@main/nav/20260415164141374.png",
+                "https://cdn.jsdelivr.net/gh/shenbourne/Image-Hosting-Service@main/nav/20260415164508774.png",
+                "https://cdn.jsdelivr.net/gh/shenbourne/Image-Hosting-Service@main/nav/20260415164612163.png",
+                "https://cdn.jsdelivr.net/gh/shenbourne/Image-Hosting-Service@main/nav/20260415164703317.png"
               ],
-              "detailDescription": "",
+              "detailDescription": "Google Chrome 是一款由 Google 开发的免费、快速且高度可定制的网络浏览器。自 2008 年发布以来，它凭借极简的设计、出色的性能和强大的安全性，成为了目前全球使用最广泛的网页浏览器。\n\n## 核心优势与功能 \n\n- **速度与性能**：采用高性能的 V8 JavaScript 引擎，能显著缩短网页加载和复杂应用运行的时间。\n\n- **安全防护**：内置 Google 密码管理工具、网站漏洞提醒，并利用沙盒技术防止恶意软件对电脑造成损害。\n\n- **多设备同步**：只需登录 Google 帐号，即可在手机、电脑和平板之间实时同步书签、历史记录、密码和已打开的标签页。\n\n- **丰富的扩展生态**：你可以从 Chrome 网上应用店 下载数以万计的插件（Extensions），为浏览器增加截图、翻译、广告拦截或效率办公等功能。\n\n- **内置 Google 服务**：直接整合了 Google 搜索、Google 翻译（支持 130 多种语言）以及 Google 智能镜头。 \n\n## 技术与版本\n\n- **开源基础**：Chrome 基于开源的 Chromium 项目构建。这意味着许多其他浏览器（如新版 Microsoft Edge）也使用与之相同的底层内核。\n\n- **多版本体系**：Google 提供五个不同阶段的版本，包括普通用户使用的稳定版（Stable）、Beta 版、开发人员版（Dev）以及实验性的 Canary 版。\n\n- **企业级支持**：针对企业环境，提供 Chrome Enterprise，具备增强的数据保护和零信任访问控制功能。 \n\n## 常用操作建议\n\n* 设置主页：在“设置”>“外观”中开启“显示‘主页’按钮”。\n\n* 下载官方版本：建议始终通过 [Google Chrome 官网](https://www.google.com/intl/zh-CN/chrome/) 获取安装程序，以确保版本安全。 ",
               "faviconDark": ""
             },
             {
@@ -85,6 +92,24 @@
                 "hasVariants": true
               },
               "faviconDark": "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/dark/github.png"
+            },
+            {
+              "id": "lnk_7J4aOPUs",
+              "title": "Via浏览器官网 - 崇尚速度与简约的手机浏览器，Via官方网站",
+              "url": "https://viayoo.com/zh-cn/",
+              "description": "Via浏览器，让你享用简洁清爽、快速高效的手机浏览器。充分发挥广告拦截、脚本等先进技术，达到”简单””好用”的设计初衷。",
+              "favicon": "https://viayoo.com/favicon.ico",
+              "faviconDark": "",
+              "order": 3,
+              "platforms": [],
+              "imageGallery": [
+                "https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBcaIlPLCLOQDJMFLAKlCESE5hx28GgDXvC7GZLc3RdlwIdBWUrjs6OeXoh_o3EAH1tTUc7B6A2GpGR.n7Ds0hHc-&format=webp&h=576",
+                "https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBcaIlPLCLOQDJMFLAKlCESGRXMqPavIMl2WOl3fC2iwhPxPVKpGdp5KxjZIk7f6Xn3cgdom6sDQ2L5fU9RauHSw-&format=webp&h=576",
+                "https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBcaIlPLCLOQDJMFLAKlCESEF8zUx2mXoUoOZ4qK3BSJZb8D3ifISdMfCI4C7LCFUz3wBkNPpXTpI6BnoCH8FdH4-&format=webp&h=576",
+                "https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHM0OYfiFeMI2p9MWie0CvL99U4GA1gf6_kayTt_kBblFwHwo8BW8JXlqfnYxKPmmBcaIlPLCLOQDJMFLAKlCESGoDgvaQPDTd8sfX5qjFqQwl9rcgpkCzQfeeGkpNzIwjJq14V7mcxQs.K5EXdE92vg-&format=webp&h=576"
+              ],
+              "detailDescription": "Via 浏览器是一款由中国个人开发者（Tu Yafeng）开发的极简主义移动端网页浏览器，以体积小巧、速度极快和高度自定义著称。它在极客和追求简约体验的用户群中拥有极高的口碑。 \n\n## 核心特色\n\n- **极致轻量**：安装包体积通常小于 1MB（约一张照片的大小），对手机内存和存储空间的占用极低。\n\n- **纯净无干扰**：主页仅有一个搜索框，无新闻推送、无天气、无内置广告，启动速度接近瞬时。\n\n- **功能强大**：虽然体积小，但支持广告拦截（标记过滤）、插件扩展、脚本支持（兼容油猴脚本）、资源嗅探、以及夜间模式等进阶功能。\n\n- **高度可定制**：用户可以自定义主页背景、Logo、布局，甚至通过代码修改浏览器界面。 \n\n##  运行机制\n\n- **WebView 内核**：它调用系统自带的 WebView 内核（Android 平台）或 WebKit 内核（iOS 平台），这解释了为何其体积远小于自带内核的 Chrome 或 Firefox。\n\n- **多平台支持**：主要活跃于 Android 平台，目前也已在 Apple App Store 上架了 iOS 版本。 ",
+              "customButtons": []
             }
           ]
         }

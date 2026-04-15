@@ -614,6 +614,10 @@ const DEFAULT_SETTINGS = {
   galleryAutoPlay: true,
   galleryAutoPlayInterval: 5000,
   galleryTransition: 'fade',
+  galleryMasonryAutoScroll: true,
+  galleryMasonryScrollSpeed: 20,
+  galleryDefaultMode: 'carousel',
+  galleryCarouselTimeout: 10000,
 };
 
 // GET site settings (public)
@@ -632,13 +636,17 @@ app.put('/api/settings', authMiddleware, (req, res) => {
     const data = readData();
     if (!data.siteSettings) data.siteSettings = { ...DEFAULT_SETTINGS };
 
-    const { title, logoUrl, githubJsdelivr, galleryAutoPlay, galleryAutoPlayInterval, galleryTransition } = req.body;
+    const { title, logoUrl, githubJsdelivr, galleryAutoPlay, galleryAutoPlayInterval, galleryTransition, galleryMasonryAutoScroll, galleryMasonryScrollSpeed, galleryDefaultMode, galleryCarouselTimeout } = req.body;
     if (title !== undefined) data.siteSettings.title = title;
     if (logoUrl !== undefined) data.siteSettings.logoUrl = logoUrl;
     if (githubJsdelivr !== undefined) data.siteSettings.githubJsdelivr = !!githubJsdelivr;
     if (galleryAutoPlay !== undefined) data.siteSettings.galleryAutoPlay = !!galleryAutoPlay;
     if (galleryAutoPlayInterval !== undefined) data.siteSettings.galleryAutoPlayInterval = Number(galleryAutoPlayInterval) || 5000;
     if (galleryTransition !== undefined) data.siteSettings.galleryTransition = galleryTransition;
+    if (galleryMasonryAutoScroll !== undefined) data.siteSettings.galleryMasonryAutoScroll = !!galleryMasonryAutoScroll;
+    if (galleryMasonryScrollSpeed !== undefined) data.siteSettings.galleryMasonryScrollSpeed = Number(galleryMasonryScrollSpeed) || 20;
+    if (galleryDefaultMode !== undefined) data.siteSettings.galleryDefaultMode = galleryDefaultMode;
+    if (galleryCarouselTimeout !== undefined) data.siteSettings.galleryCarouselTimeout = Number(galleryCarouselTimeout) || 10000;
 
     writeData(data);
     res.json({ success: true, data: data.siteSettings });

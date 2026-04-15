@@ -80,6 +80,45 @@
           </div>
         </div>
         <div class="form-row">
+          <label class="form-label flex-label">
+            <span>瀑布流自动滚动</span>
+            <input type="checkbox" v-model="settingsForm.galleryMasonryAutoScroll" class="toggle-checkbox" />
+            <span class="toggle-switch"></span>
+          </label>
+          <p class="form-hint">开启后，瀑布流模式下的图片集将自动匀速滚动</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">瀑布流滚动周期（秒）</label>
+          <input
+            class="form-input"
+            type="number"
+            min="5"
+            max="120"
+            v-model.number="settingsForm.galleryMasonryScrollSpeed"
+            placeholder="例如 20"
+          />
+          <p class="form-hint">数值越小滚动速度越快</p>
+        </div>
+        <div class="form-row">
+          <label class="form-label">图片集默认展示模式</label>
+          <select v-model="settingsForm.galleryDefaultMode" class="form-input">
+            <option value="carousel">轮播</option>
+            <option value="masonry">瀑布流</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">轮播无操作切换瀑布流（秒）</label>
+          <input
+            class="form-input"
+            type="number"
+            min="3"
+            max="300"
+            v-model.number="settingsForm.galleryCarouselTimeout"
+            placeholder="例如 10"
+          />
+          <p class="form-hint">设置为 0 则关闭自动切换</p>
+        </div>
+        <div class="form-row">
           <label class="form-label">站点 Logo</label>
           <div class="logo-mode-tabs">
             <button
@@ -328,6 +367,10 @@ const settingsForm = ref({
   galleryAutoPlay: true,
   galleryAutoPlayInterval: 5,
   galleryTransition: 'fade',
+  galleryMasonryAutoScroll: true,
+  galleryMasonryScrollSpeed: 20,
+  galleryDefaultMode: 'carousel',
+  galleryCarouselTimeout: 10,
 })
 const logoInputMode = ref('url')
 const logoFile = ref(null)
@@ -370,6 +413,10 @@ async function handleSaveSettings() {
       galleryAutoPlay: settingsForm.value.galleryAutoPlay,
       galleryAutoPlayInterval: (settingsForm.value.galleryAutoPlayInterval || 5) * 1000,
       galleryTransition: settingsForm.value.galleryTransition,
+      galleryMasonryAutoScroll: settingsForm.value.galleryMasonryAutoScroll,
+      galleryMasonryScrollSpeed: settingsForm.value.galleryMasonryScrollSpeed || 20,
+      galleryDefaultMode: settingsForm.value.galleryDefaultMode || 'carousel',
+      galleryCarouselTimeout: (settingsForm.value.galleryCarouselTimeout ?? 10) * 1000,
     })
     settingsSuccess.value = '设置已保存'
     setTimeout(() => { settingsSuccess.value = '' }, 2000)
@@ -401,6 +448,10 @@ watch(
         galleryAutoPlay: navStore.siteSettings.galleryAutoPlay !== false,
         galleryAutoPlayInterval: (navStore.siteSettings.galleryAutoPlayInterval || 5000) / 1000,
         galleryTransition: navStore.siteSettings.galleryTransition || 'fade',
+        galleryMasonryAutoScroll: navStore.siteSettings.galleryMasonryAutoScroll !== false,
+        galleryMasonryScrollSpeed: navStore.siteSettings.galleryMasonryScrollSpeed || 20,
+        galleryDefaultMode: navStore.siteSettings.galleryDefaultMode || 'carousel',
+        galleryCarouselTimeout: (navStore.siteSettings.galleryCarouselTimeout || 10000) / 1000,
       }
       logoFile.value = null
       settingsError.value = ''

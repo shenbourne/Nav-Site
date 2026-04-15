@@ -14,6 +14,10 @@ export const useNavStore = defineStore('nav', () => {
     galleryAutoPlay: true,
     galleryAutoPlayInterval: 5000,
     galleryTransition: 'fade',
+    galleryMasonryAutoScroll: true,
+    galleryMasonryScrollSpeed: 20,
+    galleryDefaultMode: 'carousel',
+    galleryCarouselTimeout: 10000,
   })
 
   // Get all links across all categories for "全部" tab

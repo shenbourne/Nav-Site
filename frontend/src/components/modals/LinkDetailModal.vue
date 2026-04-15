@@ -62,34 +62,23 @@
 
       <!-- 图片集 -->
       <div v-if="link.imageGallery?.length" class="gallery-section">
-        <div class="gallery-mode-bar" v-if="link.imageGallery.length > 1">
-          <span class="gallery-mode-label">展示模式</span>
-          <div class="gallery-mode-tabs">
-            <button
-              :class="['mode-tab', { active: galleryMode === 'carousel' }]"
-              @click="setGalleryMode('carousel')"
-            >轮播</button>
-            <button
-              :class="['mode-tab', { active: galleryMode === 'masonry' }]"
-              @click="setGalleryMode('masonry')"
-            >瀑布流</button>
-          </div>
-        </div>
 
-        <!-- 轮播模式 -->
-        <div
-          v-if="galleryMode === 'carousel'"
-          class="gallery-container"
-          @mouseenter="pauseAutoPlay"
-          @mouseleave="startAutoPlay"
-        >
+
+        <Transition name="gallery-mode-switch" mode="out-in">
+          <!-- 轮播模式 -->
+          <div
+            v-if="galleryMode === 'carousel'"
+            class="gallery-container"
+            @mouseenter="handleCarouselMouseEnter"
+            @mouseleave="handleCarouselMouseLeave"
+          >
           <button v-if="link.imageGallery.length > 1" class="gallery-nav prev" @click="prevImage">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
           </button>
 
-          <div class="gallery-image-wrapper">
+          <div class="gallery-image-wrapper" @click="openLightbox">
             <Transition :name="galleryTransitionName" mode="out-in">
               <img
                 :key="currentImageIndex"
@@ -117,22 +106,64 @@
           </div>
         </div>
 
-        <!-- 横向瀑布流模式 -->
-        <div v-else class="gallery-masonry">
+        <!-- 横向瀑布流模式 - 无限滚动 -->
+        <div
+          v-else
+          class="gallery-masonry-wrapper"
+          @mouseenter="pauseMasonryScroll"
+          @mouseleave="startMasonryScroll"
+        >
           <div
-            v-for="(url, index) in link.imageGallery"
-            :key="index"
-            class="masonry-item"
-            @click="openCarouselAt(index)"
+            class="gallery-masonry-track"
+            :class="{ 'is-paused': masonryPaused }"
+            :style="masonryTrackStyle"
           >
-            <img
-              :src="navStore.accelerateUrl(url)"
-              :alt="`${link.title} 图片 ${index + 1}`"
-              @error="handleImageError"
-              loading="lazy"
-            />
+            <!-- 原始图片 -->
+            <div
+              v-for="(url, index) in masonryGallery"
+              :key="`orig-${index}`"
+              class="masonry-item"
+              @click="openCarouselAt(index)"
+            >
+              <img
+                :src="navStore.accelerateUrl(url)"
+                :alt="`${link.title} 图片 ${index + 1}`"
+                @error="handleImageError"
+                loading="lazy"
+              />
+            </div>
+            <!-- 复制图片以实现无缝循环 -->
+            <div
+              v-for="(url, index) in masonryGallery"
+              :key="`dup-${index}`"
+              class="masonry-item"
+              @click="openCarouselAt(index)"
+            >
+              <img
+                :src="navStore.accelerateUrl(url)"
+                :alt="`${link.title} 图片 ${index + 1}`"
+                @error="handleImageError"
+                loading="lazy"
+              />
+            </div>
           </div>
         </div>
+      </Transition>
+
+      <!-- 大图模式 -->
+      <div v-if="lightboxVisible" class="gallery-lightbox" @click.self="closeLightbox">
+        <button class="lightbox-close" @click="closeLightbox">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <img
+          :src="navStore.accelerateUrl(link.imageGallery[currentImageIndex])"
+          :alt="`${link.title} 大图`"
+          @error="handleImageError"
+        />
+      </div>
       </div>
 
       <!-- 详细介绍 -->
@@ -225,14 +256,96 @@ function setGalleryMode(mode) {
   galleryMode.value = mode
   if (mode === 'carousel') {
     startAutoPlay()
+    startCarouselInactivityTimer()
+    pauseMasonryScroll()
   } else {
     pauseAutoPlay()
+    stopCarouselInactivityTimer()
+    startMasonryScroll()
   }
 }
 
 function openCarouselAt(index) {
-  currentImageIndex.value = index
+  const total = props.link.imageGallery?.length || 0
+  if (!total) return
+  currentImageIndex.value = (currentImageIndex.value + index) % total
   setGalleryMode('carousel')
+}
+
+// 瀑布流画廊（从当前轮播图片开始）
+const masonryGallery = computed(() => {
+  const arr = props.link.imageGallery || []
+  if (!arr.length) return []
+  const idx = currentImageIndex.value % arr.length
+  return [...arr.slice(idx), ...arr.slice(0, idx)]
+})
+
+// 大图模式
+const lightboxVisible = ref(false)
+
+function openLightbox() {
+  lightboxVisible.value = true
+  resetCarouselInactivityTimer()
+}
+
+function closeLightbox() {
+  lightboxVisible.value = false
+  resetCarouselInactivityTimer()
+}
+
+function handleCarouselMouseEnter() {
+  pauseAutoPlay()
+  stopCarouselInactivityTimer()
+}
+
+function handleCarouselMouseLeave() {
+  startAutoPlay()
+  startCarouselInactivityTimer()
+}
+
+// 轮播无操作自动切换瀑布流
+let carouselInactivityTimer = null
+
+function startCarouselInactivityTimer() {
+  stopCarouselInactivityTimer()
+  const timeout = navStore.siteSettings.galleryCarouselTimeout || 10000
+  if (galleryMode.value === 'carousel' && timeout > 0) {
+    carouselInactivityTimer = setTimeout(() => {
+      setGalleryMode('masonry')
+    }, timeout)
+  }
+}
+
+function stopCarouselInactivityTimer() {
+  if (carouselInactivityTimer) {
+    clearTimeout(carouselInactivityTimer)
+    carouselInactivityTimer = null
+  }
+}
+
+function resetCarouselInactivityTimer() {
+  if (galleryMode.value === 'carousel') {
+    startCarouselInactivityTimer()
+  }
+}
+
+// 瀑布流自动滚动
+const masonryPaused = ref(false)
+
+const masonryTrackStyle = computed(() => {
+  const enabled = navStore.siteSettings.galleryMasonryAutoScroll !== false
+  const speed = navStore.siteSettings.galleryMasonryScrollSpeed || 20
+  return {
+    animationDuration: enabled ? `${speed}s` : '0s',
+  }
+})
+
+function startMasonryScroll() {
+  masonryPaused.value = false
+}
+
+function pauseMasonryScroll() {
+  masonryPaused.value = true
 }
 
 // 图片轮播
@@ -249,15 +362,18 @@ const galleryTransitionName = computed(() => {
 function nextImage() {
   if (!props.link.imageGallery?.length) return
   currentImageIndex.value = (currentImageIndex.value + 1) % props.link.imageGallery.length
+  resetCarouselInactivityTimer()
 }
 
 function prevImage() {
   if (!props.link.imageGallery?.length) return
   currentImageIndex.value = (currentImageIndex.value - 1 + props.link.imageGallery.length) % props.link.imageGallery.length
+  resetCarouselInactivityTimer()
 }
 
 function goToImage(index) {
   currentImageIndex.value = index
+  resetCarouselInactivityTimer()
 }
 
 function startAutoPlay() {
@@ -290,22 +406,37 @@ const renderedDetailDescription = computed(() => {
 watch(() => props.visible, (val) => {
   if (val) {
     currentImageIndex.value = 0
-    galleryMode.value = 'carousel'
+    lightboxVisible.value = false
+    const defaultMode = navStore.siteSettings.galleryDefaultMode || 'carousel'
+    galleryMode.value = defaultMode
     faviconError.value = false
-    startAutoPlay()
+    if (defaultMode === 'carousel') {
+      startAutoPlay()
+      startCarouselInactivityTimer()
+      pauseMasonryScroll()
+    } else {
+      pauseAutoPlay()
+      stopCarouselInactivityTimer()
+      startMasonryScroll()
+    }
   } else {
     pauseAutoPlay()
+    pauseMasonryScroll()
+    stopCarouselInactivityTimer()
+    lightboxVisible.value = false
   }
 })
 
 onMounted(() => {
   if (props.visible) {
     startAutoPlay()
+    startCarouselInactivityTimer()
   }
 })
 
 onUnmounted(() => {
   pauseAutoPlay()
+  stopCarouselInactivityTimer()
 })
 </script>
 
@@ -528,7 +659,7 @@ onUnmounted(() => {
   overflow: hidden;
   border-radius: 24px;
   position: relative;
-
+  cursor: zoom-in;
 }
 
 .gallery-image-wrapper img {
@@ -596,43 +727,49 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.8);
 }
 
-/* 横向瀑布流 */
-.gallery-masonry {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-height: 280px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 8px;
+/* 横向瀑布流 - 无限滚动 */
+.gallery-masonry-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
   background: var(--bg-section);
   border-radius: 12px;
-  -ms-overflow-style: none;
-  scrollbar-width: thin;
+  aspect-ratio: 16 / 9;
 }
 
-.gallery-masonry::-webkit-scrollbar {
-  height: 6px;
+.gallery-masonry-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  width: max-content;
+  animation: masonry-scroll-right linear infinite;
 }
 
-.gallery-masonry::-webkit-scrollbar-track {
-  background: transparent;
+.gallery-masonry-track.is-paused {
+  animation-play-state: paused;
 }
 
-.gallery-masonry::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+@keyframes masonry-scroll-right {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 .masonry-item {
   flex-shrink: 0;
-  width: 140px;
+  height: 100%;
   border-radius: 8px;
   overflow: hidden;
   cursor: zoom-in;
   background: var(--bg-card);
   transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .masonry-item:hover {
@@ -642,19 +779,14 @@ onUnmounted(() => {
 
 .masonry-item img {
   display: block;
-  width: 100%;
-  height: auto;
-  object-fit: cover;
+  height: 100%;
+  width: auto;
+  object-fit: contain;
 }
 
 @media (max-width: 640px) {
-  .gallery-masonry {
-    max-height: 220px;
-    gap: 6px;
-  }
-
-  .masonry-item {
-    width: 110px;
+  .gallery-masonry-track {
+    gap: 8px;
   }
 }
 
@@ -683,6 +815,56 @@ onUnmounted(() => {
 .gallery-slide-leave-to {
   opacity: 0;
   transform: translateX(-30px);
+}
+
+/* 轮播/瀑布流模式切换动画 */
+.gallery-mode-switch-enter-active,
+.gallery-mode-switch-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.gallery-mode-switch-enter-from,
+.gallery-mode-switch-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+/* 大图模式 */
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.gallery-lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* 详细介绍 */
