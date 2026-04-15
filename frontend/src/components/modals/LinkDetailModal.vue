@@ -60,15 +60,35 @@
         </div>
       </div>
 
-      <!-- 图片集轮播 -->
+      <!-- 图片集 -->
       <div v-if="link.imageGallery?.length" class="gallery-section">
-        <div class="gallery-container" @mouseenter="pauseAutoPlay" @mouseleave="startAutoPlay">
+        <div class="gallery-mode-bar" v-if="link.imageGallery.length > 1">
+          <span class="gallery-mode-label">展示模式</span>
+          <div class="gallery-mode-tabs">
+            <button
+              :class="['mode-tab', { active: galleryMode === 'carousel' }]"
+              @click="setGalleryMode('carousel')"
+            >轮播</button>
+            <button
+              :class="['mode-tab', { active: galleryMode === 'masonry' }]"
+              @click="setGalleryMode('masonry')"
+            >瀑布流</button>
+          </div>
+        </div>
+
+        <!-- 轮播模式 -->
+        <div
+          v-if="galleryMode === 'carousel'"
+          class="gallery-container"
+          @mouseenter="pauseAutoPlay"
+          @mouseleave="startAutoPlay"
+        >
           <button v-if="link.imageGallery.length > 1" class="gallery-nav prev" @click="prevImage">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6"/>
             </svg>
           </button>
-          
+
           <div class="gallery-image-wrapper">
             <Transition :name="galleryTransitionName" mode="out-in">
               <img
@@ -79,7 +99,7 @@
               />
             </Transition>
           </div>
-          
+
           <button v-if="link.imageGallery.length > 1" class="gallery-nav next" @click="nextImage">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="9 18 15 12 9 6"/>
@@ -93,6 +113,23 @@
               :key="index"
               :class="['dot', { active: index === currentImageIndex }]"
               @click="goToImage(index)"
+            />
+          </div>
+        </div>
+
+        <!-- 横向瀑布流模式 -->
+        <div v-else class="gallery-masonry">
+          <div
+            v-for="(url, index) in link.imageGallery"
+            :key="index"
+            class="masonry-item"
+            @click="openCarouselAt(index)"
+          >
+            <img
+              :src="navStore.accelerateUrl(url)"
+              :alt="`${link.title} 图片 ${index + 1}`"
+              @error="handleImageError"
+              loading="lazy"
             />
           </div>
         </div>
@@ -181,6 +218,23 @@ function getPlatformIcon(platform) {
   return platformIcons[platform] || ''
 }
 
+// 图片展示模式：轮播 / 横向瀑布流
+const galleryMode = ref('carousel')
+
+function setGalleryMode(mode) {
+  galleryMode.value = mode
+  if (mode === 'carousel') {
+    startAutoPlay()
+  } else {
+    pauseAutoPlay()
+  }
+}
+
+function openCarouselAt(index) {
+  currentImageIndex.value = index
+  setGalleryMode('carousel')
+}
+
 // 图片轮播
 const currentImageIndex = ref(0)
 let autoPlayInterval = null
@@ -236,6 +290,7 @@ const renderedDetailDescription = computed(() => {
 watch(() => props.visible, (val) => {
   if (val) {
     currentImageIndex.value = 0
+    galleryMode.value = 'carousel'
     faviconError.value = false
     startAutoPlay()
   } else {
@@ -419,9 +474,43 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-/* 图片轮播 */
+/* 图片集 */
 .gallery-section {
   margin-top: 8px;
+}
+
+.gallery-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.gallery-mode-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.gallery-mode-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-section);
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.mode-tab {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  transition: var(--transition-base);
+}
+
+.mode-tab.active {
+  background: var(--color-primary);
+  color: #fff;
 }
 
 .gallery-container {
@@ -505,6 +594,68 @@ onUnmounted(() => {
 
 .dot:hover {
   background: rgba(255, 255, 255, 0.8);
+}
+
+/* 横向瀑布流 */
+.gallery-masonry {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 280px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px;
+  background: var(--bg-section);
+  border-radius: 12px;
+  -ms-overflow-style: none;
+  scrollbar-width: thin;
+}
+
+.gallery-masonry::-webkit-scrollbar {
+  height: 6px;
+}
+
+.gallery-masonry::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gallery-masonry::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.masonry-item {
+  flex-shrink: 0;
+  width: 140px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: zoom-in;
+  background: var(--bg-card);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.masonry-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.masonry-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+@media (max-width: 640px) {
+  .gallery-masonry {
+    max-height: 220px;
+    gap: 6px;
+  }
+
+  .masonry-item {
+    width: 110px;
+  }
 }
 
 /* 图片切换动画 - 淡入淡出 */
