@@ -2,56 +2,25 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { nanoid } = require('nanoid');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const { fetchMeta, matchIconsFromSource, searchDashboardIcons, searchLobeIcons } = require('./services/meta-fetcher');
+const { DataStore } = require('./services/data-store');
 
 const app = express();
 const PORT = 3000;
-const DATA_FILE = path.join(__dirname, 'data', 'nav-data.json');
-const AUTH_FILE = path.join(__dirname, 'data', 'auth-config.json');
-const UPLOADS_DIR = path.join(__dirname, 'data', 'uploads');
-
-// Ensure uploads directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
-
-// Ensure data directory exists
 const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
 
-// Initialize nav-data.json if not present
-if (!fs.existsSync(DATA_FILE)) {
-  const defaultNavData = {
-    siteSettings: { title: 'My Nav 的主页', logoUrl: '' },
-    categories: [
-      { id: 'cat_001', name: '全部', icon: '📋', order: 0 },
-    ],
-  };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(defaultNavData, null, 2), 'utf-8');
-  console.log('Created default nav-data.json');
-}
+const store = new DataStore(DATA_DIR);
 
-// Initialize auth-config.json if not present
-if (!fs.existsSync(AUTH_FILE)) {
-  const crypto = require('crypto');
-  const defaultAuthConfig = {
-    username: 'admin',
-    password: bcrypt.hashSync('admin123', 10),
-    jwtSecret: crypto.randomBytes(32).toString('hex'),
-  };
-  fs.writeFileSync(AUTH_FILE, JSON.stringify(defaultAuthConfig, null, 2), 'utf-8');
-  console.log('Created default auth-config.json (username: admin, password: admin123)');
+if (!fs.existsSync(store.getUploadsDir())) {
+  fs.mkdirSync(store.getUploadsDir(), { recursive: true });
 }
 
 // Multer config for logo upload
 const logoStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  destination: (req, file, cb) => cb(null, store.getUploadsDir()),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname) || '.png';
     cb(null, 'logo' + ext);
@@ -72,27 +41,7 @@ const uploadLogo = multer({
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(UPLOADS_DIR));
-
-// --- Data helpers ---
-
-function readData() {
-  const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-  return JSON.parse(raw);
-}
-
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
-}
-
-function readAuthConfig() {
-  const raw = fs.readFileSync(AUTH_FILE, 'utf-8');
-  return JSON.parse(raw);
-}
-
-function writeAuthConfig(config) {
-  fs.writeFileSync(AUTH_FILE, JSON.stringify(config, null, 2), 'utf-8');
-}
+app.use('/uploads', express.static(store.getUploadsDir()));
 
 // --- Auth middleware ---
 
@@ -103,7 +52,7 @@ function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.split(' ')[1];
-  const authConfig = readAuthConfig();
+  const authConfig = store.getAuthConfig();
 
   try {
     const decoded = jwt.verify(token, authConfig.jwtSecret);
@@ -116,11 +65,10 @@ function authMiddleware(req, res, next) {
 
 // --- Auth routes ---
 
-// POST login
 app.post('/api/auth/login', (req, res) => {
   try {
     const { username, password } = req.body;
-    const authConfig = readAuthConfig();
+    const authConfig = store.getAuthConfig();
 
     if (username !== authConfig.username) {
       return res.status(401).json({ success: false, error: '用户名或密码错误' });
@@ -138,31 +86,27 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
-// GET check auth status
 app.get('/api/auth/check', authMiddleware, (req, res) => {
   res.json({ success: true, data: { username: req.user.username } });
 });
 
-// PUT change password (requires auth)
 app.put('/api/auth/password', authMiddleware, (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
-    const authConfig = readAuthConfig();
+    const authConfig = store.getAuthConfig();
 
     const isMatch = bcrypt.compareSync(oldPassword, authConfig.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, error: '当前密码错误' });
     }
 
-    authConfig.password = bcrypt.hashSync(newPassword, 10);
-    writeAuthConfig(authConfig);
+    store.updateAuthConfig({ password: bcrypt.hashSync(newPassword, 10) });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PUT change username (requires auth)
 app.put('/api/auth/username', authMiddleware, (req, res) => {
   try {
     const { newUsername, password } = req.body;
@@ -170,39 +114,28 @@ app.put('/api/auth/username', authMiddleware, (req, res) => {
       return res.status(400).json({ success: false, error: '用户名至少需要2个字符' });
     }
 
-    const authConfig = readAuthConfig();
+    const authConfig = store.getAuthConfig();
     const isMatch = bcrypt.compareSync(password, authConfig.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, error: '密码验证失败' });
     }
 
-    authConfig.username = newUsername.trim();
-    writeAuthConfig(authConfig);
+    store.updateAuthConfig({ username: newUsername.trim() });
 
-    // Issue a new token with the updated username
-    const token = jwt.sign({ username: authConfig.username }, authConfig.jwtSecret, { expiresIn: '7d' });
-    res.json({ success: true, data: { username: authConfig.username, token } });
+    const updatedConfig = store.getAuthConfig();
+    const token = jwt.sign({ username: updatedConfig.username }, updatedConfig.jwtSecret, { expiresIn: '7d' });
+    res.json({ success: true, data: { username: updatedConfig.username, token } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// --- Category routes (top-level tabs) ---
+// --- Category routes ---
 
-// GET all categories (public)
 app.get('/api/categories', (req, res) => {
   try {
-    const data = readData();
-    data.categories.sort((a, b) => a.order - b.order);
-    data.categories.forEach(cat => {
-      if (cat.subCategories) {
-        cat.subCategories.sort((a, b) => a.order - b.order);
-        cat.subCategories.forEach(sub => {
-          if (sub.links) sub.links.sort((a, b) => a.order - b.order);
-        });
-      }
-    });
-    res.json({ success: true, data: data.categories });
+    const categories = store.getAllCategories();
+    res.json({ success: true, data: categories });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -210,200 +143,111 @@ app.get('/api/categories', (req, res) => {
 
 // --- Reorder routes (must be BEFORE parameterized routes) ---
 
-// PUT reorder top-level categories (protected)
 app.put('/api/categories/reorder', authMiddleware, (req, res) => {
   try {
-    const data = readData();
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) {
       return res.status(400).json({ success: false, error: 'orderedIds must be an array' });
     }
-    const catMap = new Map(data.categories.map(c => [c.id, c]));
-    orderedIds.forEach((id, index) => {
-      const cat = catMap.get(id);
-      if (cat) cat.order = index;
-    });
-    data.categories.sort((a, b) => a.order - b.order);
-    writeData(data);
+    store.reorderCategories(orderedIds);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PUT reorder sub-categories within a category (protected)
 app.put('/api/categories/:catId/subcategories/reorder', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) {
       return res.status(400).json({ success: false, error: 'orderedIds must be an array' });
     }
-    const subMap = new Map((cat.subCategories || []).map(s => [s.id, s]));
-    orderedIds.forEach((id, index) => {
-      const sub = subMap.get(id);
-      if (sub) sub.order = index;
-    });
-    if (cat.subCategories) cat.subCategories.sort((a, b) => a.order - b.order);
-    writeData(data);
+    store.reorderSubCategories(req.params.catId, orderedIds);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PUT reorder links within a sub-category (protected)
 app.put('/api/categories/:catId/subcategories/:subId/links/reorder', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    const sub = (cat.subCategories || []).find(s => s.id === req.params.subId);
-    if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
-
     const { orderedIds } = req.body;
     if (!Array.isArray(orderedIds)) {
       return res.status(400).json({ success: false, error: 'orderedIds must be an array' });
     }
-    const linkMap = new Map((sub.links || []).map(l => [l.id, l]));
-    orderedIds.forEach((id, index) => {
-      const link = linkMap.get(id);
-      if (link) link.order = index;
-    });
-    if (sub.links) sub.links.sort((a, b) => a.order - b.order);
-    writeData(data);
+    store.reorderLinks(req.params.catId, req.params.subId, orderedIds);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST create top-level category (protected)
+// --- Category CRUD ---
+
 app.post('/api/categories', authMiddleware, (req, res) => {
   try {
-    const data = readData();
     const { name, icon } = req.body;
-    const newCat = {
-      id: 'cat_' + nanoid(8),
-      name: name || 'New Category',
-      icon: icon || '📁',
-      order: data.categories.length,
-      subCategories: [],
-    };
-    data.categories.push(newCat);
-    writeData(data);
-    res.json({ success: true, data: newCat });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// PUT update top-level category (protected)
-app.put('/api/categories/:catId', authMiddleware, (req, res) => {
-  try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    const { name, icon } = req.body;
-    if (name !== undefined) cat.name = name;
-    if (icon !== undefined) cat.icon = icon;
-
-    writeData(data);
+    const cat = store.createCategory({ name, icon });
     res.json({ success: true, data: cat });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// DELETE top-level category (protected)
+app.put('/api/categories/:catId', authMiddleware, (req, res) => {
+  try {
+    const cat = store.updateCategory(req.params.catId, { name: req.body.name, icon: req.body.icon });
+    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
+    res.json({ success: true, data: cat });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.delete('/api/categories/:catId', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    const idx = data.categories.findIndex(c => c.id === req.params.catId);
-    if (idx === -1) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    data.categories.splice(idx, 1);
-    data.categories.forEach((c, i) => (c.order = i));
-    writeData(data);
+    const ok = store.deleteCategory(req.params.catId);
+    if (!ok) return res.status(404).json({ success: false, error: 'Category not found' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// --- SubCategory routes (二级分类) ---
+// --- SubCategory CRUD ---
 
-// POST create sub-category (protected)
 app.post('/api/categories/:catId/subcategories', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    if (!cat.subCategories) cat.subCategories = [];
-
     const { name, color } = req.body;
-    const newSub = {
-      id: 'sub_' + nanoid(8),
-      name: name || 'New Sub-Category',
-      color: color || '#4facfe',
-      order: cat.subCategories.length,
-      links: [],
-    };
-    cat.subCategories.push(newSub);
-    writeData(data);
-    res.json({ success: true, data: newSub });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// PUT update sub-category (protected)
-app.put('/api/categories/:catId/subcategories/:subId', authMiddleware, (req, res) => {
-  try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    const sub = (cat.subCategories || []).find(s => s.id === req.params.subId);
-    if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
-
-    const { name, color } = req.body;
-    if (name !== undefined) sub.name = name;
-    if (color !== undefined) sub.color = color;
-
-    writeData(data);
+    const sub = store.createSubCategory(req.params.catId, { name, color });
+    if (!sub) return res.status(404).json({ success: false, error: 'Category not found' });
     res.json({ success: true, data: sub });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// DELETE sub-category (protected)
+app.put('/api/categories/:catId/subcategories/:subId', authMiddleware, (req, res) => {
+  try {
+    const { name, color } = req.body;
+    const sub = store.updateSubCategory(req.params.catId, req.params.subId, { name, color });
+    if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
+    res.json({ success: true, data: sub });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.delete('/api/categories/:catId/subcategories/:subId', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    const idx = (cat.subCategories || []).findIndex(s => s.id === req.params.subId);
-    if (idx === -1) return res.status(404).json({ success: false, error: 'Sub-category not found' });
-
-    cat.subCategories.splice(idx, 1);
-    cat.subCategories.forEach((s, i) => (s.order = i));
-    writeData(data);
+    const ok = store.deleteSubCategory(req.params.catId, req.params.subId);
+    if (!ok) return res.status(404).json({ success: false, error: 'Sub-category not found' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST move sub-category to another category (protected)
 app.post('/api/subcategories/move', authMiddleware, (req, res) => {
   try {
     const { subId, fromCatId, toCatId } = req.body;
@@ -413,192 +257,51 @@ app.post('/api/subcategories/move', authMiddleware, (req, res) => {
     if (fromCatId === toCatId) {
       return res.status(400).json({ success: false, error: 'Source and target category cannot be the same' });
     }
-
-    const data = readData();
-    const fromCat = data.categories.find(c => c.id === fromCatId);
-    if (!fromCat) return res.status(404).json({ success: false, error: 'Source category not found' });
-
-    const toCat = data.categories.find(c => c.id === toCatId);
-    if (!toCat) return res.status(404).json({ success: false, error: 'Target category not found' });
-
-    const subIdx = (fromCat.subCategories || []).findIndex(s => s.id === subId);
-    if (subIdx === -1) return res.status(404).json({ success: false, error: 'Sub-category not found' });
-
-    const [sub] = fromCat.subCategories.splice(subIdx, 1);
-    fromCat.subCategories.forEach((s, i) => (s.order = i));
-
-    if (!toCat.subCategories) toCat.subCategories = [];
-    sub.order = toCat.subCategories.length;
-    toCat.subCategories.push(sub);
-
-    writeData(data);
+    const sub = store.moveSubCategory(subId, fromCatId, toCatId);
+    if (!sub) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, data: sub });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// --- Link routes ---
+// --- Link CRUD ---
 
-// POST add link to sub-category (protected)
 app.post('/api/categories/:catId/subcategories/:subId/links', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    const sub = (cat.subCategories || []).find(s => s.id === req.params.subId);
-    if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
-
-    const { title, url, description, favicon, faviconDark, customButtons, platforms, imageGallery, detailDescription } = req.body;
-    const newLink = {
-      id: 'lnk_' + nanoid(8),
-      title: title || '',
-      url: url || '',
-      description: description || '',
-      favicon: favicon || '',
-      faviconDark: faviconDark || '',
-      order: sub.links.length,
-      platforms: platforms || [],
-      imageGallery: (imageGallery || []).filter(img => img && img.trim()),
-      detailDescription: detailDescription || '',
-      customButtons: (customButtons || [])
-        .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
-        .map(btn => ({
-          id: 'btn_' + nanoid(8),
-          label: btn.label || '',
-          url: btn.url || '',
-          iconSlug: btn.iconSlug,
-          iconSvg: btn.iconSvg,
-          iconBrandColor: btn.iconBrandColor,
-          icon: btn.icon,
-        })),
-    };
-    sub.links.push(newLink);
-    writeData(data);
-    res.json({ success: true, data: newLink });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// PUT update link (protected)
-app.put('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddleware, (req, res) => {
-  try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    const sub = (cat.subCategories || []).find(s => s.id === req.params.subId);
-    if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
-
-    const link = sub.links.find(l => l.id === req.params.linkId);
-    if (!link) return res.status(404).json({ success: false, error: 'Link not found' });
-
-    const { title, url, description, favicon, faviconDark, customButtons, platforms, imageGallery, detailDescription } = req.body;
-    if (title !== undefined) link.title = title;
-    if (url !== undefined) link.url = url;
-    if (description !== undefined) link.description = description;
-    if (favicon !== undefined) link.favicon = favicon;
-    if (faviconDark !== undefined) link.faviconDark = faviconDark || '';
-    if (platforms !== undefined) link.platforms = platforms || [];
-    if (imageGallery !== undefined) link.imageGallery = (imageGallery || []).filter(img => img && img.trim());
-    if (detailDescription !== undefined) link.detailDescription = detailDescription || '';
-    if (customButtons !== undefined) {
-      link.customButtons = customButtons
-        .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
-        .map(btn => ({
-          id: btn.id || 'btn_' + nanoid(8),
-          label: btn.label || '',
-          url: btn.url || '',
-          iconSlug: btn.iconSlug,
-          iconSvg: btn.iconSvg,
-          iconBrandColor: btn.iconBrandColor,
-          icon: btn.icon,
-        }));
-    }
-
-    writeData(data);
+    const link = store.createLink(req.params.catId, req.params.subId, req.body);
+    if (!link) return res.status(404).json({ success: false, error: 'Category or sub-category not found' });
     res.json({ success: true, data: link });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST move link between categories (protected)
+app.put('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddleware, (req, res) => {
+  try {
+    const link = store.updateLink(req.params.catId, req.params.subId, req.params.linkId, req.body);
+    if (!link) return res.status(404).json({ success: false, error: 'Link not found' });
+    res.json({ success: true, data: link });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/links/move', authMiddleware, (req, res) => {
   try {
     const { linkId, fromCatId, fromSubId, toCatId, toSubId, data: linkData } = req.body;
-    const data = readData();
-
-    // Find and remove from source
-    const fromCat = data.categories.find(c => c.id === fromCatId);
-    if (!fromCat) return res.status(404).json({ success: false, error: 'Source category not found' });
-    const fromSub = (fromCat.subCategories || []).find(s => s.id === fromSubId);
-    if (!fromSub) return res.status(404).json({ success: false, error: 'Source sub-category not found' });
-    const linkIdx = fromSub.links.findIndex(l => l.id === linkId);
-    if (linkIdx === -1) return res.status(404).json({ success: false, error: 'Link not found' });
-
-    const [link] = fromSub.links.splice(linkIdx, 1);
-    fromSub.links.forEach((l, i) => (l.order = i));
-
-    // Update link fields
-    if (linkData) {
-      if (linkData.title !== undefined) link.title = linkData.title;
-      if (linkData.url !== undefined) link.url = linkData.url;
-      if (linkData.description !== undefined) link.description = linkData.description;
-      if (linkData.favicon !== undefined) link.favicon = linkData.favicon;
-      if (linkData.faviconDark !== undefined) link.faviconDark = linkData.faviconDark || '';
-      if (linkData.platforms !== undefined) link.platforms = linkData.platforms || [];
-      if (linkData.imageGallery !== undefined) link.imageGallery = (linkData.imageGallery || []).filter(img => img && img.trim());
-      if (linkData.detailDescription !== undefined) link.detailDescription = linkData.detailDescription || '';
-      if (linkData.customButtons !== undefined) {
-        link.customButtons = linkData.customButtons
-          .filter(btn => (btn.label || btn.iconSvg || btn.icon) && btn.url)
-          .map(btn => ({
-            id: btn.id || 'btn_' + nanoid(8),
-            label: btn.label || '',
-            url: btn.url || '',
-            iconSlug: btn.iconSlug,
-            iconSvg: btn.iconSvg,
-            iconBrandColor: btn.iconBrandColor,
-            icon: btn.icon,
-          }));
-      }
-    }
-
-    // Add to destination
-    const toCat = data.categories.find(c => c.id === toCatId);
-    if (!toCat) return res.status(404).json({ success: false, error: 'Target category not found' });
-    const toSub = (toCat.subCategories || []).find(s => s.id === toSubId);
-    if (!toSub) return res.status(404).json({ success: false, error: 'Target sub-category not found' });
-
-    link.order = toSub.links.length;
-    toSub.links.push(link);
-
-    writeData(data);
+    const link = store.moveLink(linkId, fromCatId, fromSubId, toCatId, toSubId, linkData);
+    if (!link) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, data: link });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// DELETE link (protected)
 app.delete('/api/categories/:catId/subcategories/:subId/links/:linkId', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    const cat = data.categories.find(c => c.id === req.params.catId);
-    if (!cat) return res.status(404).json({ success: false, error: 'Category not found' });
-
-    const sub = (cat.subCategories || []).find(s => s.id === req.params.subId);
-    if (!sub) return res.status(404).json({ success: false, error: 'Sub-category not found' });
-
-    const idx = sub.links.findIndex(l => l.id === req.params.linkId);
-    if (idx === -1) return res.status(404).json({ success: false, error: 'Link not found' });
-
-    sub.links.splice(idx, 1);
-    sub.links.forEach((l, i) => (l.order = i));
-    writeData(data);
+    const ok = store.deleteLink(req.params.catId, req.params.subId, req.params.linkId);
+    if (!ok) return res.status(404).json({ success: false, error: 'Link not found' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -607,55 +310,24 @@ app.delete('/api/categories/:catId/subcategories/:subId/links/:linkId', authMidd
 
 // --- Site settings routes ---
 
-const DEFAULT_SETTINGS = {
-  title: 'My Nav 的主页',
-  logoUrl: '',
-  githubJsdelivr: false,
-  galleryAutoPlay: true,
-  galleryAutoPlayInterval: 5000,
-  galleryTransition: 'fade',
-  galleryMasonryAutoScroll: true,
-  galleryMasonryScrollSpeed: 20,
-  galleryDefaultMode: 'carousel',
-  galleryCarouselTimeout: 10000,
-};
-
-// GET site settings (public)
 app.get('/api/settings', (req, res) => {
   try {
-    const data = readData();
-    res.json({ success: true, data: { ...DEFAULT_SETTINGS, ...data.siteSettings } });
+    const settings = store.getSettings();
+    res.json({ success: true, data: settings });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PUT update site settings (protected)
 app.put('/api/settings', authMiddleware, (req, res) => {
   try {
-    const data = readData();
-    if (!data.siteSettings) data.siteSettings = { ...DEFAULT_SETTINGS };
-
-    const { title, logoUrl, githubJsdelivr, galleryAutoPlay, galleryAutoPlayInterval, galleryTransition, galleryMasonryAutoScroll, galleryMasonryScrollSpeed, galleryDefaultMode, galleryCarouselTimeout } = req.body;
-    if (title !== undefined) data.siteSettings.title = title;
-    if (logoUrl !== undefined) data.siteSettings.logoUrl = logoUrl;
-    if (githubJsdelivr !== undefined) data.siteSettings.githubJsdelivr = !!githubJsdelivr;
-    if (galleryAutoPlay !== undefined) data.siteSettings.galleryAutoPlay = !!galleryAutoPlay;
-    if (galleryAutoPlayInterval !== undefined) data.siteSettings.galleryAutoPlayInterval = Number(galleryAutoPlayInterval) || 5000;
-    if (galleryTransition !== undefined) data.siteSettings.galleryTransition = galleryTransition;
-    if (galleryMasonryAutoScroll !== undefined) data.siteSettings.galleryMasonryAutoScroll = !!galleryMasonryAutoScroll;
-    if (galleryMasonryScrollSpeed !== undefined) data.siteSettings.galleryMasonryScrollSpeed = Number(galleryMasonryScrollSpeed) || 20;
-    if (galleryDefaultMode !== undefined) data.siteSettings.galleryDefaultMode = galleryDefaultMode;
-    if (galleryCarouselTimeout !== undefined) data.siteSettings.galleryCarouselTimeout = Number(galleryCarouselTimeout) || 10000;
-
-    writeData(data);
-    res.json({ success: true, data: data.siteSettings });
+    const settings = store.updateSettings(req.body);
+    res.json({ success: true, data: settings });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST upload logo (protected)
 app.post('/api/settings/logo', authMiddleware, (req, res) => {
   uploadLogo.single('logo')(req, res, (err) => {
     if (err) {
@@ -665,29 +337,25 @@ app.post('/api/settings/logo', authMiddleware, (req, res) => {
       return res.status(400).json({ success: false, error: '请选择一个图片文件' });
     }
     try {
-      const data = readData();
-      if (!data.siteSettings) data.siteSettings = { ...DEFAULT_SETTINGS };
-
       // Remove old logo files with different extensions
-      const oldFiles = fs.readdirSync(UPLOADS_DIR).filter(f => f.startsWith('logo.') && f !== req.file.filename);
-      oldFiles.forEach(f => fs.unlinkSync(path.join(UPLOADS_DIR, f)));
+      const uploadsDir = store.getUploadsDir();
+      const oldFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('logo.') && f !== req.file.filename);
+      oldFiles.forEach(f => fs.unlinkSync(path.join(uploadsDir, f)));
 
-      data.siteSettings.logoUrl = '/uploads/' + req.file.filename;
-      writeData(data);
-      res.json({ success: true, data: { logoUrl: data.siteSettings.logoUrl } });
+      const result = store.updateLogoUrl('/uploads/' + req.file.filename);
+      res.json({ success: true, data: result });
     } catch (writeErr) {
       res.status(500).json({ success: false, error: writeErr.message });
     }
   });
 });
 
-// --- Meta fetch route (protected) ---
+// --- Meta fetch route ---
 
 app.post('/api/fetch-meta', authMiddleware, async (req, res) => {
   try {
     const { url, skipIconSource } = req.body;
     if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
-
     const meta = await fetchMeta(url, { skipIconSource });
     res.json({ success: true, data: meta });
   } catch (err) {
@@ -695,13 +363,12 @@ app.post('/api/fetch-meta', authMiddleware, async (req, res) => {
   }
 });
 
-// --- Icon matching route (protected) ---
+// --- Icon matching routes ---
 
 app.post('/api/match-icons', authMiddleware, async (req, res) => {
   try {
     const { url } = req.body;
     if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
-
     const matchedIcons = await matchIconsFromSource(url, { forceRefresh: true });
     res.json({ success: true, data: matchedIcons });
   } catch (err) {
@@ -709,15 +376,12 @@ app.post('/api/match-icons', authMiddleware, async (req, res) => {
   }
 });
 
-// --- Dashboard Icons search route (protected) ---
-
 app.post('/api/search-dashboard-icons', authMiddleware, async (req, res) => {
   try {
     const { query, limit } = req.body;
     if (!query || !query.trim()) {
       return res.status(400).json({ success: false, error: 'Query is required' });
     }
-
     const icons = await searchDashboardIcons(query, { limit: limit || 20 });
     res.json({ success: true, data: icons });
   } catch (err) {
@@ -725,15 +389,12 @@ app.post('/api/search-dashboard-icons', authMiddleware, async (req, res) => {
   }
 });
 
-// --- LobeHub Icons search route (protected) ---
-
 app.post('/api/search-lobe-icons', authMiddleware, async (req, res) => {
   try {
     const { query, limit } = req.body;
     if (!query || !query.trim()) {
       return res.status(400).json({ success: false, error: 'Query is required' });
     }
-
     const icons = await searchLobeIcons(query, { limit: limit || 20 });
     res.json({ success: true, data: icons });
   } catch (err) {

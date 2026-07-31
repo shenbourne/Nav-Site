@@ -61,9 +61,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount, watch } from 'vue'
-import { useUiStore } from '../stores/uiStore.js'
-import { useNavStore } from '../stores/navStore.js'
+import { ref, computed, onBeforeUnmount } from 'vue'
+import { useFavicon } from '../composables/useFavicon.js'
 
 const props = defineProps({
   link: { type: Object, required: true },
@@ -72,30 +71,12 @@ const props = defineProps({
 
 const emit = defineEmits(['edit', 'delete', 'showDetail'])
 
-const uiStore = useUiStore()
-const navStore = useNavStore()
-const faviconError = ref(false)
+const { displayFavicon, faviconError, fallbackLetter, fallbackColor } = useFavicon(props.link)
+
 const tooltipVisible = ref(false)
 const tooltipX = ref(0)
 const tooltipY = ref(0)
 let tooltipTimer = null
-
-// 根据当前主题选择对应的图标
-const displayFavicon = computed(() => {
-  const isDark = uiStore.theme === 'dark' ||
-    (uiStore.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-
-  // 暗色主题且有暗色图标时使用暗色图标，否则使用亮色图标
-  if (isDark && props.link.faviconDark) {
-    return navStore.accelerateUrl(props.link.faviconDark)
-  }
-  return navStore.accelerateUrl(props.link.favicon)
-})
-
-// 当图标 URL 变化时（如主题切换），重置错误状态
-watch(displayFavicon, () => {
-  faviconError.value = false
-})
 
 function showTooltip() {
   tooltipTimer = setTimeout(() => {
@@ -128,20 +109,6 @@ const displayUrl = computed(() => {
   } catch {
     return props.link.url
   }
-})
-
-const fallbackLetter = computed(() => {
-  return (props.link.title || props.link.url || '?').charAt(0).toUpperCase()
-})
-
-const fallbackColor = computed(() => {
-  const colors = ['#4a90d9', '#43e97b', '#f093fb', '#fa709a', '#4facfe', '#30cfd0', '#a18cd1', '#f6d365']
-  let hash = 0
-  const str = props.link.url || props.link.title || ''
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return colors[Math.abs(hash) % colors.length]
 })
 </script>
 
