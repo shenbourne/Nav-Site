@@ -1,7 +1,15 @@
 /**
  * Markdown 渲染工具
- * 轻量级实现，支持常用 Markdown 语法
+ *
+ * 基于 marked 库，通过自定义 renderer 和 HTML 后处理注入项目 CSS class。
+ * 接口与旧的手写实现完全兼容 — 调用方无需修改。
  */
+import { marked } from 'marked'
+
+marked.setOptions({
+  gfm: true,
+  breaks: false,
+})
 
 /**
  * 将 Markdown 文本渲染为 HTML
@@ -10,225 +18,46 @@
  */
 export function renderMarkdown(text) {
   if (!text) return ''
-  
-  // 转义 HTML 特殊字符
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  
-  // 代码块（需要在其他替换之前处理）
-  html = html.replace(/```([\s\S]*?)```/g, '<pre class="md-code-block"><code>$1</code></pre>')
-  
-  // 行内代码
-  html = html.replace(/`([^`]+)`/g, '<code class="md-code">$1</code>')
-  
-  // 标题
-  html = html.replace(/^### (.+)$/gm, '<h3 class="md-h3">$1</h3>')
-  html = html.replace(/^## (.+)$/gm, '<h2 class="md-h2">$1</h2>')
-  html = html.replace(/^# (.+)$/gm, '<h1 class="md-h1">$1</h1>')
-  
-  // 粗体和斜体（顺序：*** > ** > *）
-  html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>')
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="md-strong">$1</strong>')
-  html = html.replace(/\*([^*]+)\*/g, '<em class="md-em">$1</em>')
-  html = html.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>')
-  html = html.replace(/__([^_]+)__/g, '<strong class="md-strong">$1</strong>')
-  html = html.replace(/_([^_]+)_/g, '<em class="md-em">$1</em>')
-  
-  // 删除线
-  html = html.replace(/~~([^~]+)~~/g, '<del class="md-del">$1</del>')
-  
-  // 链接
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>')
-  
-  // 图片
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="md-img" loading="lazy" />')
-  
-  // 无序列表（逐行处理）
-  const lines = html.split('\n')
-  const result = []
-  let inList = false
-  
-  for (const line of lines) {
-    const trimmed = line.trim()
-    
-    // 检查是否是列表项
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      if (!inList) {
-        result.push('<ul class="md-ul">')
-        inList = true
-      }
-      const content = trimmed.slice(2)
-      result.push(`<li class="md-li">${content}</li>`)
-    } else if (trimmed.match(/^\d+\.\s/)) {
-      // 有序列表项
-      if (!inList) {
-        result.push('<ol class="md-ol">')
-        inList = true
-      }
-      const content = trimmed.replace(/^\d+\.\s/, '')
-      result.push(`<li class="md-li">${content}</li>`)
-    } else {
-      if (inList) {
-        result.push('</ul>')
-        inList = false
-      }
-      result.push(line)
-    }
-  }
-  
-  if (inList) {
-    result.push('</ul>')
-  }
-  
-  html = result.join('\n')
-  
-  // 引用
-  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="md-blockquote">$1</blockquote>')
-  
-  // 分隔线
-  html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '<hr class="md-hr" />')
-  
-  // 表格（简化支持）
-  html = processTables(html)
-  
-  // 段落处理
-  const paragraphs = html.split('\n\n')
-  html = paragraphs.map(p => {
-    p = p.trim()
-    if (!p) return ''
-    // 如果已经是块级元素，不包裹
-    if (p.startsWith('<h') || p.startsWith('<ul') || p.startsWith('<ol') || 
-        p.startsWith('<pre') || p.startsWith('<blockquote') || p.startsWith('<hr') ||
-        p.startsWith('<table') || p.startsWith('<li')) {
-      return p
-    }
-    return `<p class="md-p">${p.replace(/\n/g, '<br>')}</p>`
-  }).filter(Boolean).join('')
-  
-  return html
+  const html = marked.parse(text)
+  return postProcessHtml(html)
 }
 
 /**
- * 处理 Markdown 表格
- * @param {string} html - HTML 字符串
- * @returns {string} 处理后的 HTML
+ * 后处理 HTML — 为元素注入项目约定的 CSS class。
+ * marked 的默认 renderer 在 v18 中给元素添加了不固定的属性，
+ * 这里统一替换为项目需要的 class 名称。
  */
-function processTables(html) {
-  const lines = html.split('\n')
-  const result = []
-  let inTable = false
-  let tableRows = []
-  let alignments = []
-  let hasSeparator = false
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const trimmed = line.trim()
-    
-    // 检查是否是表格行（包含 | 且不在代码块中）
-    if (trimmed.includes('|') && !trimmed.startsWith('<pre')) {
-      if (!inTable) {
-        inTable = true
-        tableRows = []
-        alignments = []
-        hasSeparator = false
-      }
-      
-      // 检查是否是分隔行（|---|---| 或 |:---:|:---:|:---:|）
-      const separatorContent = trimmed.replace(/\|/g, '').trim()
-      if (/^[-:\s]+$/.test(separatorContent) && separatorContent.includes('-')) {
-        // 解析对齐方式
-        const cells = trimmed.split('|').map(c => c.trim()).filter(c => c)
-        alignments = cells.map(cell => {
-          const left = cell.startsWith(':')
-          const right = cell.endsWith(':')
-          if (left && right) return 'center'
-          if (right) return 'right'
-          return 'left'
-        })
-        hasSeparator = true
-        continue
-      }
-      
-      // 解析单元格
-      const cells = trimmed.split('|').map(c => c.trim()).filter(c => c)
-      if (cells.length > 0) {
-        tableRows.push(cells)
-      }
-    } else {
-      if (inTable && tableRows.length > 0) {
-        // 输出表格
-        result.push(renderTable(tableRows, alignments, hasSeparator))
-        tableRows = []
-        alignments = []
-        hasSeparator = false
-        inTable = false
-      }
-      result.push(line)
-    }
-  }
-  
-  // 处理末尾的表格
-  if (inTable && tableRows.length > 0) {
-    result.push(renderTable(tableRows, alignments, hasSeparator))
-  }
-  
-  return result.join('\n')
-}
-
-/**
- * 渲染表格
- * @param {string[][]} rows - 表格行数据
- * @param {string[]} alignments - 列对齐方式
- * @param {boolean} hasHeader - 是否将第一行作为表头
- * @returns {string} HTML 表格
- */
-function renderTable(rows, alignments = [], hasHeader = true) {
-  if (rows.length === 0) return ''
-  
-  const colCount = Math.max(...rows.map(r => r.length))
-  
-  let html = '<table class="md-table">'
-  
-  if (hasHeader && rows.length > 0) {
-    const header = rows[0]
-    html += '<thead><tr>'
-    header.forEach((cell, index) => {
-      const align = alignments[index] || 'left'
-      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
-      html += `<th class="md-th"${style}>${cell}</th>`
-    })
-    // 补齐表头单元格
-    for (let i = header.length; i < colCount; i++) {
-      const align = alignments[i] || 'left'
-      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
-      html += `<th class="md-th"${style}></th>`
-    }
-    html += '</tr></thead>'
-  }
-  
-  const bodyStartIndex = hasHeader ? 1 : 0
-  html += '<tbody>'
-  for (let i = bodyStartIndex; i < rows.length; i++) {
-    const row = rows[i]
-    html += '<tr>'
-    row.forEach((cell, index) => {
-      const align = alignments[index] || 'left'
-      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
-      html += `<td class="md-td"${style}>${cell}</td>`
-    })
-    // 补齐单元格
-    for (let i = row.length; i < colCount; i++) {
-      const align = alignments[i] || 'left'
-      const style = align !== 'left' ? ` style="text-align: ${align};"` : ''
-      html += `<td class="md-td"${style}></td>`
-    }
-    html += '</tr>'
-  }
-  html += '</tbody></table>'
+function postProcessHtml(html) {
   return html
+    // 标题
+    .replace(/<h1/g, '<h1 class="md-h1"')
+    .replace(/<h2/g, '<h2 class="md-h2"')
+    .replace(/<h3/g, '<h3 class="md-h3"')
+    // 段落
+    .replace(/<p>/g, '<p class="md-p">')
+    // 行内
+    .replace(/<strong>/g, '<strong class="md-strong">')
+    .replace(/<em>/g, '<em class="md-em">')
+    .replace(/<del>/g, '<del class="md-del">')
+    // 代码
+    .replace(/<code>/g, '<code class="md-code">')
+    .replace(/<pre>/g, '<pre class="md-code-block">')
+    // 链接 (给非 class 的链接添加 class)
+    .replace(/<a /g, '<a class="md-link" ')
+    // 图片
+    .replace(/<img([^>]*)>/g, '<img$1 class="md-img" loading="lazy">')
+    // 引用
+    .replace(/<blockquote>/g, '<blockquote class="md-blockquote">')
+    // 分隔线
+    .replace(/<hr>/g, '<hr class="md-hr" />').replace(/<hr \/>/g, '<hr class="md-hr" />')
+    // 列表
+    .replace(/<ul>/g, '<ul class="md-ul">')
+    .replace(/<ol>/g, '<ol class="md-ol">')
+    .replace(/<li>/g, '<li class="md-li">')
+    // 表格（使用负向预查避免重复替换已带 class 的标签）
+    .replace(/<table>/g, '<table class="md-table">')
+    .replace(/<th(?=\s|>)(?!\s+class=)/g, '<th class="md-th"')
+    .replace(/<td(?=\s|>)(?!\s+class=)/g, '<td class="md-td"')
 }
 
 /**
@@ -238,20 +67,22 @@ function renderTable(rows, alignments = [], hasHeader = true) {
  */
 export function extractPlainText(text) {
   if (!text) return ''
-  
-  return text
-    .replace(/```[\s\S]*?```/g, '') // 移除代码块
-    .replace(/`([^`]+)`/g, '$1') // 行内代码
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, '') // 图片
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // 链接
-    .replace(/[#*_~`>-]/g, '') // Markdown 标记
-    .replace(/\n+/g, ' ') // 换行转空格
+
+  const html = marked.parse(text)
+  return html
+    .replace(/<[^>]*>/g, '')   // 移除所有 HTML 标签
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n+/g, ' ')      // 换行转空格
     .trim()
 }
 
 /**
  * Composable: useMarkdown
- * @returns {Object} Markdown 工具函数
+ * @returns {{ renderMarkdown, extractPlainText }}
  */
 export function useMarkdown() {
   return {
