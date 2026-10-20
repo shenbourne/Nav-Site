@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { safeGet, resolveSafeUrl, UnsafeUrlError } = require('./security');
 
 // 图标源配置
 const ICON_SOURCE_URL = 'https://cdn.jsdelivr.net/gh/shenbourne/Image-Hosting-Service@main/icons';
@@ -166,6 +167,9 @@ async function fetchMeta(url, options = {}) {
     return result;
   }
 
+  // 用户提供的地址必须先通过 SSRF 校验；不安全的地址直接拒绝，不做降级处理。
+  await resolveSafeUrl(url);
+
   // 优先使用图标源匹配（除非指定了 skipIconSource）
   if (!options.skipIconSource) {
     const matchedIcons = await matchIconsFromSource(url);
@@ -176,7 +180,7 @@ async function fetchMeta(url, options = {}) {
   }
 
   try {
-    const { data: html } = await axios.get(url, {
+    const { data: html } = await safeGet(url, {
       timeout: 8000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -184,7 +188,6 @@ async function fetchMeta(url, options = {}) {
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
       },
       maxRedirects: 5,
-      responseType: 'text',
     });
 
     const $ = cheerio.load(html);
@@ -234,6 +237,7 @@ async function fetchMeta(url, options = {}) {
       }
     }
   } catch (err) {
+    if (err instanceof UnsafeUrlError) throw err;
     // If fetch fails, use domain name as title
     result.title = parsedUrl.hostname;
     // 如果图标源未匹配到，使用 Google favicon API

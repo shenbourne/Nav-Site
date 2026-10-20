@@ -2,15 +2,26 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const { fetchMeta, matchIconsFromSource, searchDashboardIcons, searchLobeIcons } = require('./services/meta-fetcher');
 const { DataStore } = require('./services/data-store');
+const {
+  UnsafeUrlError,
+  createRateLimiter,
+  validatePassword,
+  detectImageType,
+  signSessionToken,
+  verifySessionToken,
+} = require('./services/security');
 
 const app = express();
-const PORT = 3000;
-const DATA_DIR = path.join(__dirname, 'data');
+const PORT = Number(process.env.PORT) || 3000;
+// NAV_DATA_DIR 允许把数据目录放到仓库之外（测试 / 自定义部署时使用）
+const DATA_DIR = process.env.NAV_DATA_DIR
+  ? path.resolve(process.env.NAV_DATA_DIR)
+  : path.join(__dirname, 'data');
+const SAFE_LOGO_PATTERN = /^\/logo\.(png|jpe?g|gif|webp)$/i;
 
 const store = new DataStore(DATA_DIR);
 
@@ -18,30 +29,82 @@ if (!fs.existsSync(store.getUploadsDir())) {
   fs.mkdirSync(store.getUploadsDir(), { recursive: true });
 }
 
-// Multer config for logo upload
-const logoStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, store.getUploadsDir()),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png';
-    cb(null, 'logo' + ext);
-  },
+// 清理旧版本可能残留的活动内容文件（.svg / .html 等）
+for (const name of fs.readdirSync(store.getUploadsDir())) {
+  if (name.startsWith('logo.') && !/^logo\.(png|jpe?g|gif|webp)$/i.test(name)) {
+    try {
+      fs.unlinkSync(path.join(store.getUploadsDir(), name));
+      console.warn(`[upload] 已删除不安全的旧文件：${name}`);
+    } catch (err) {
+      console.warn(`[upload] 无法删除旧文件 ${name}: ${err.message}`);
+    }
+  }
+}
+
+// 位于反向代理之后时，用 TRUST_PROXY 指定可信层数，否则不信任 X-Forwarded-For
+if (process.env.TRUST_PROXY) {
+  const value = process.env.TRUST_PROXY;
+  app.set('trust proxy', /^\d+$/.test(value) ? Number(value) : value);
+}
+
+// --- Request logging middleware ---
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${new Date().toISOString()} ${req.method} ${req.url} ${res.statusCode} ${duration}ms`);
+  });
+  next();
 });
 
+// Logo 上传：先读入内存，按文件头识别真实类型后再落盘，
+// 文件名由服务端决定，客户端扩展名不参与任何路径或类型决策。
 const uploadLogo = multer({
-  storage: logoStorage,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype && file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
       cb(new Error('只允许上传图片文件'), false);
     }
   },
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 }, // 2MB
 });
 
 app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(store.getUploadsDir()));
+app.use(express.json({ limit: '1mb' }));
+
+// 上传目录只允许安全的位图文件，禁止执行任何主动内容
+app.use(
+  '/uploads',
+  (req, res, next) => {
+    if (!SAFE_LOGO_PATTERN.test(req.path)) {
+      return res.status(404).end();
+    }
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; sandbox");
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    next();
+  },
+  express.static(store.getUploadsDir(), {
+    dotfiles: 'deny',
+    index: false,
+    fallthrough: false,
+    setHeaders(res) {
+      res.setHeader('Content-Disposition', 'inline');
+    },
+  })
+);
+
+// --- Health check endpoint ---
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
 
 // --- Auth middleware ---
 
@@ -55,7 +118,8 @@ function authMiddleware(req, res, next) {
   const authConfig = store.getAuthConfig();
 
   try {
-    const decoded = jwt.verify(token, authConfig.jwtSecret);
+    // 固定 HS256、绑定账号名与令牌版本；改密/改名会让旧令牌立即失效。
+    const decoded = verifySessionToken(token, authConfig);
     req.user = decoded;
     next();
   } catch (err) {
@@ -63,23 +127,42 @@ function authMiddleware(req, res, next) {
   }
 }
 
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const loginIpLimiter = createRateLimiter({
+  windowMs: LOGIN_WINDOW_MS,
+  max: 20,
+  message: '登录尝试过于频繁',
+});
+const loginAccountLimiter = createRateLimiter({
+  windowMs: LOGIN_WINDOW_MS,
+  max: 10,
+  message: '该账号尝试次数过多',
+  keyFn: req => `user:${String(req.body?.username || '').toLowerCase()}`,
+});
+const credentialLimiter = createRateLimiter({
+  windowMs: LOGIN_WINDOW_MS,
+  max: 10,
+  message: '验证失败次数过多',
+  keyFn: req => `credential:${req.user?.username || 'unknown'}`,
+});
+
 // --- Auth routes ---
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
     const authConfig = store.getAuthConfig();
 
-    if (username !== authConfig.username) {
+    // 无论用户名是否正确都执行一次哈希比较，避免通过响应时间枚举账号。
+    const isMatch = await bcrypt.compare(String(password ?? ''), authConfig.password);
+    if (username !== authConfig.username || !isMatch) {
       return res.status(401).json({ success: false, error: '用户名或密码错误' });
     }
 
-    const isMatch = bcrypt.compareSync(password, authConfig.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, error: '用户名或密码错误' });
-    }
-
-    const token = jwt.sign({ username }, authConfig.jwtSecret, { expiresIn: '7d' });
+    // Successful logins should not consume the brute-force budget.
+    loginIpLimiter.reset(req);
+    loginAccountLimiter.reset(req);
+    const token = signSessionToken(authConfig);
     res.json({ success: true, data: { token, username } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -90,41 +173,61 @@ app.get('/api/auth/check', authMiddleware, (req, res) => {
   res.json({ success: true, data: { username: req.user.username } });
 });
 
-app.put('/api/auth/password', authMiddleware, (req, res) => {
+app.put('/api/auth/password', authMiddleware, credentialLimiter, async (req, res) => {
   try {
-    const { oldPassword, newPassword } = req.body;
+    const { oldPassword, newPassword } = req.body || {};
     const authConfig = store.getAuthConfig();
 
-    const isMatch = bcrypt.compareSync(oldPassword, authConfig.password);
+    const isMatch = await bcrypt.compare(String(oldPassword ?? ''), authConfig.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, error: '当前密码错误' });
     }
 
-    store.updateAuthConfig({ password: bcrypt.hashSync(newPassword, 10) });
-    res.json({ success: true });
+    const policyError = validatePassword(newPassword, { username: authConfig.username });
+    if (policyError) {
+      return res.status(400).json({ success: false, error: policyError });
+    }
+    if (await bcrypt.compare(newPassword, authConfig.password)) {
+      return res.status(400).json({ success: false, error: '新密码不能与当前密码相同' });
+    }
+
+    const updatedConfig = store.updateAuthConfig({
+      password: await bcrypt.hash(newPassword, 10),
+      tokenVersion: (Number(authConfig.tokenVersion) || 1) + 1,
+    });
+    credentialLimiter.reset(req);
+    // 轮换版本后旧令牌全部失效，返回新令牌以保持当前会话可用。
+    res.json({ success: true, data: { token: signSessionToken(updatedConfig) } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.put('/api/auth/username', authMiddleware, (req, res) => {
+app.put('/api/auth/username', authMiddleware, credentialLimiter, async (req, res) => {
   try {
-    const { newUsername, password } = req.body;
-    if (!newUsername || newUsername.trim().length < 2) {
+    const { newUsername, password } = req.body || {};
+    if (typeof newUsername !== 'string' || newUsername.trim().length < 2) {
       return res.status(400).json({ success: false, error: '用户名至少需要2个字符' });
+    }
+    if (newUsername.trim().length > 32) {
+      return res.status(400).json({ success: false, error: '用户名不能超过32个字符' });
     }
 
     const authConfig = store.getAuthConfig();
-    const isMatch = bcrypt.compareSync(password, authConfig.password);
+    const isMatch = await bcrypt.compare(String(password ?? ''), authConfig.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, error: '密码验证失败' });
     }
 
-    store.updateAuthConfig({ username: newUsername.trim() });
-
-    const updatedConfig = store.getAuthConfig();
-    const token = jwt.sign({ username: updatedConfig.username }, updatedConfig.jwtSecret, { expiresIn: '7d' });
-    res.json({ success: true, data: { username: updatedConfig.username, token } });
+    const updatedConfig = store.updateAuthConfig({
+      username: newUsername.trim(),
+      tokenVersion: (Number(authConfig.tokenVersion) || 1) + 1,
+    });
+    credentialLimiter.reset(req);
+    res.json({
+      success: true,
+      data: { username: updatedConfig.username, token: signSessionToken(updatedConfig) },
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -336,13 +439,25 @@ app.post('/api/settings/logo', authMiddleware, (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, error: '请选择一个图片文件' });
     }
+
+    const detected = detectImageType(req.file.buffer);
+    if (!detected) {
+      return res.status(400).json({
+        success: false,
+        error: '只允许上传 PNG / JPEG / GIF / WebP 图片',
+      });
+    }
+
     try {
-      // Remove old logo files with different extensions
       const uploadsDir = store.getUploadsDir();
-      const oldFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('logo.') && f !== req.file.filename);
+      const filename = `logo.${detected.ext}`;
+      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer, { mode: 0o644 });
+
+      // 删除其它旧 logo 文件，避免历史活动内容继续留在目录里
+      const oldFiles = fs.readdirSync(uploadsDir).filter(f => f.startsWith('logo.') && f !== filename);
       oldFiles.forEach(f => fs.unlinkSync(path.join(uploadsDir, f)));
 
-      const result = store.updateLogoUrl('/uploads/' + req.file.filename);
+      const result = store.updateLogoUrl(`/uploads/${filename}?v=${Date.now()}`);
       res.json({ success: true, data: result });
     } catch (writeErr) {
       res.status(500).json({ success: false, error: writeErr.message });
@@ -359,7 +474,10 @@ app.post('/api/fetch-meta', authMiddleware, async (req, res) => {
     const meta = await fetchMeta(url, { skipIconSource });
     res.json({ success: true, data: meta });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    if (err instanceof UnsafeUrlError) {
+      return res.status(400).json({ success: false, error: err.message });
+    }
+    res.status(502).json({ success: false, error: `抓取失败：${err.message}` });
   }
 });
 

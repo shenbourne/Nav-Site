@@ -27,7 +27,7 @@
           @click="selectIcon(icon)"
           :title="icon.title"
         >
-          <div class="icon-svg" v-html="icon.svg"></div>
+          <div class="icon-svg" v-html="sanitizeSvg(icon.svg)"></div>
           <span class="icon-name">{{ icon.shortName }}</span>
         </div>
       </div>
@@ -61,6 +61,7 @@
 import { ref, computed } from 'vue'
 import * as simpleIcons from 'simple-icons'
 import BaseModal from './BaseModal.vue'
+import { sanitizeSvg } from '../../composables/useSanitize.js'
 
 const props = defineProps({
   visible: Boolean,

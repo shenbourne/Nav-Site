@@ -88,9 +88,11 @@ npm run dev
 **首次启动时会自动创建管理员账号**
 
 - 用户名：`admin`
-- 密码：`admin123`
+- 密码：**随机生成**，仅在同一次启动日志中打印一次
 
-> 建议首次登录后立即修改密码。
+如需指定初始密码，启动前设置环境变量 `NAV_ADMIN_PASSWORD`（至少 12 个字符）。
+
+> 认证配置文件 `backend/data/auth-config.json` 已被排除出版本控制，不再随仓库发布。
 
 ### 📦 Docker 部署
 
@@ -109,6 +111,10 @@ services:
       - "3000:3000"
     volumes:
       - ./backend/data:/app/data
+    environment:
+      - NAV_JWT_SECRET=${NAV_JWT_SECRET:-}   # 留空则首次启动自动生成并保存
+      - NAV_ADMIN_PASSWORD=${NAV_ADMIN_PASSWORD:-}  # 仅在首次创建账号时使用
+      - TRUST_PROXY=${TRUST_PROXY:-}         # 位于反向代理之后时填 1
     restart: unless-stopped
 ```
 
@@ -119,9 +125,25 @@ services:
 **首次启动时会自动创建管理员账号**
 
 - 用户名：`admin`
-- 密码：`admin123`
+- 密码：**随机生成**，仅在启动日志中打印一次（或由 `NAV_ADMIN_PASSWORD` 指定）
 
-> 建议首次登录后立即修改密码。
+### 🔐 安全配置
+
+| 环境变量 | 作用 | 说明 |
+|----------|------|------|
+| `NAV_JWT_SECRET` | JWT 签名密钥 | 留空则自动生成 32 字节随机密钥并持久化；至少 32 字节，密钥轮换后所有旧令牌失效 |
+| `NAV_ADMIN_PASSWORD` | 初始管理员密码 | 仅首次创建账号时生效，至少 12 个字符 |
+| `TRUST_PROXY` | 反向代理层数 | 限流按客户端 IP 统计，部署在 Nginx 等代理后请设为 `1` |
+
+服务启动时会自动完成以下加固，无需手工操作：
+
+- 检测到旧版公开的签名密钥或 `admin123` 默认密码时自动轮换；
+- 修改密码/用户名后递增令牌版本，已签发的旧令牌立即失效；
+- 登录接口按 IP 与账号双维度限流，密码比较改为异步 bcrypt；
+- 修改密码执行服务端强度校验（≥12 字符、非用户名、非常见弱口令）；
+- 网页元数据抓取拒绝内网、回环、链路本地及云元数据地址，并逐个校验重定向目标；
+- Logo 上传按文件头识别真实类型，仅保留 PNG/JPEG/GIF/WebP，上传目录禁止执行主动内容；
+- Markdown、平台图标和自定义按钮 SVG 在渲染前统一做白名单净化。
 
 ## 📝 链接数据结构
 
@@ -180,10 +202,11 @@ services:
 | POST | `/api/links/move` | 跨分类移动链接 | 是 |
 | GET | `/api/settings` | 获取站点设置 | 否 |
 | PUT | `/api/settings` | 更新站点设置 | 是 |
-| POST | `/api/upload-logo` | 上传 Logo | 是 |
+| POST | `/api/settings/logo` | 上传 Logo | 是 |
 | POST | `/api/fetch-meta` | 抓取网页元数据 | 是 |
-| POST | `/api/login` | 登录 | 否 |
-| PUT | `/api/change-password` | 修改密码 | 是 |
+| POST | `/api/auth/login` | 登录 | 否 |
+| PUT | `/api/auth/password` | 修改密码 | 是 |
+| PUT | `/api/auth/username` | 修改用户名 | 是 |
 
 ## 📜 许可证
 

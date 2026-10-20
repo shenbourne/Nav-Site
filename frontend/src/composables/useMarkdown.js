@@ -5,6 +5,7 @@
  * 接口与旧的手写实现完全兼容 — 调用方无需修改。
  */
 import { marked } from 'marked'
+import { sanitizeHtml } from './useSanitize.js'
 
 marked.setOptions({
   gfm: true,
@@ -19,7 +20,8 @@ marked.setOptions({
 export function renderMarkdown(text) {
   if (!text) return ''
   const html = marked.parse(text)
-  return postProcessHtml(html)
+  // marked 允许原始 HTML 透传，必须经过白名单净化后再交给 v-html
+  return sanitizeHtml(postProcessHtml(html))
 }
 
 /**

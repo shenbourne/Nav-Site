@@ -22,7 +22,15 @@
 
       <!-- 链接按钮 -->
       <div class="link-buttons">
-        <a :href="link.url" target="_blank" rel="noopener noreferrer" class="btn-official">
+        <a
+          :href="safeExternalUrl(link.url) || '#'"
+          :class="{ disabled: !safeExternalUrl(link.url) }"
+          :aria-disabled="!safeExternalUrl(link.url)"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn-official"
+          @click="!safeExternalUrl(link.url) && $event.preventDefault()"
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
@@ -32,12 +40,15 @@
         <a
           v-for="btn in link.customButtons"
           :key="btn.id"
-          :href="btn.url"
+          :href="safeExternalUrl(btn.url) || '#'"
+          :class="{ disabled: !safeExternalUrl(btn.url) }"
+          :aria-disabled="!safeExternalUrl(btn.url)"
           target="_blank"
           rel="noopener noreferrer"
           class="btn-custom"
+          @click="!safeExternalUrl(btn.url) && $event.preventDefault()"
         >
-          <span v-if="btn.iconSvg" class="btn-icon" v-html="btn.iconSvg"></span>
+          <span v-if="btn.iconSvg" class="btn-icon" v-html="sanitizeSvg(btn.iconSvg)"></span>
           <span v-if="btn.label" class="btn-label">{{ btn.label }}</span>
         </a>
       </div>
@@ -189,6 +200,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import BaseModal from './BaseModal.vue'
 import { renderMarkdown } from '../../composables/useMarkdown.js'
+import { sanitizeSvg, safeExternalUrl } from '../../composables/useSanitize.js'
 import { useFavicon } from '../../composables/useFavicon.js'
 import { useNavStore } from '../../stores/navStore.js'
 
@@ -214,7 +226,7 @@ const platformIcons = {
 }
 
 function getPlatformIcon(platform) {
-  return platformIcons[platform] || ''
+  return sanitizeSvg(platformIcons[platform] || '')
 }
 
 // 图片展示模式：轮播 / 横向瀑布流
@@ -494,6 +506,12 @@ onUnmounted(() => {
 
 .btn-official:hover {
   opacity: 0.9;
+}
+
+.btn-official.disabled,
+.btn-custom.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-custom {

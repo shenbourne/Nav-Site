@@ -35,13 +35,16 @@
       <a
         v-for="btn in link.customButtons"
         :key="btn.id"
-        :href="btn.url"
+        :href="safeExternalUrl(btn.url) || '#'"
+        :class="{ disabled: !safeExternalUrl(btn.url) }"
+        :aria-disabled="!safeExternalUrl(btn.url)"
+        @click="!safeExternalUrl(btn.url) && $event.preventDefault()"
         target="_blank"
         rel="noopener noreferrer"
         class="custom-btn"
       >
         <!-- Simple Icons SVG -->
-        <span v-if="btn.iconSvg" class="btn-icon-svg" v-html="btn.iconSvg"></span>
+        <span v-if="btn.iconSvg" class="btn-icon-svg" v-html="sanitizeSvg(btn.iconSvg)"></span>
         <!-- 兼容旧数据的图片图标 -->
         <img v-else-if="btn.icon" :src="btn.icon" class="btn-icon" alt="" @error="$event.target.style.display = 'none'" />
         <span v-if="btn.label" class="btn-text">{{ btn.label }}</span>
@@ -63,6 +66,7 @@
 <script setup>
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useFavicon } from '../composables/useFavicon.js'
+import { sanitizeSvg, safeExternalUrl } from '../composables/useSanitize.js'
 
 const props = defineProps({
   link: { type: Object, required: true },
@@ -248,6 +252,11 @@ const displayUrl = computed(() => {
 
 .custom-btn:hover {
   background: var(--color-primary-light);
+}
+
+.custom-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-icon {

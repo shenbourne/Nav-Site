@@ -5,4 +5,17 @@ services:
       - "3000:3000"
     volumes:
       - ./backend/data:/app/data
+    environment:
+      - NODE_ENV=production
+      # 首次启动前在 .env 中设置；留空则由服务端自动生成并打印一次
+      - NAV_JWT_SECRET=${NAV_JWT_SECRET:-}
+      - NAV_ADMIN_PASSWORD=${NAV_ADMIN_PASSWORD:-}
+      # 部署在反向代理之后时填写代理层数（例如 1），否则留空
+      - TRUST_PROXY=${TRUST_PROXY:-}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

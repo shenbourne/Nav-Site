@@ -27,7 +27,7 @@
             placeholder="请输入新密码"
             required
             autocomplete="new-password"
-            minlength="6"
+            minlength="12"
           />
           <button type="button" class="eye-btn" @click="showNew = !showNew" tabindex="-1">
             <svg v-if="showNew" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -105,8 +105,13 @@ async function handleSubmit() {
   error.value = ''
   success.value = ''
 
-  if (form.value.newPassword.length < 6) {
-    error.value = '新密码至少需要6个字符'
+  if (form.value.newPassword.length < 12) {
+    error.value = '新密码至少需要12个字符'
+    return
+  }
+
+  if (form.value.newPassword.trim() !== form.value.newPassword) {
+    error.value = '密码首尾不能有空格'
     return
   }
 

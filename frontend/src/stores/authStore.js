@@ -40,6 +40,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function changePassword(oldPassword, newPassword) {
     const { data: res } = await api.put('/auth/password', { oldPassword, newPassword })
+    if (res.success && res.data?.token) {
+      // 改密会轮换令牌版本，服务端返回新令牌以保持当前会话
+      token.value = res.data.token
+      localStorage.setItem('nav_token', res.data.token)
+    }
     return res.success
   }
 

@@ -9,7 +9,28 @@
  */
 const fs = require('fs');
 const path = require('path');
+const nodeCrypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { nanoid } = require('nanoid');
+const { validatePassword } = require('./security');
+
+// 旧版本随仓库发布过的签名密钥，任何情况下都不允许继续使用。
+const LEGACY_JWT_SECRET = 'nav-site-secret-key-change-in-production';
+// 旧版本随仓库发布过的默认管理员密码，启动时检测到即强制轮换。
+const LEGACY_ADMIN_PASSWORD = 'admin123';
+const MIN_JWT_SECRET_BYTES = 32;
+
+function validateInitialPassword(password, username) {
+  return validatePassword(password, { username });
+}
+
+function isLegacyPassword(hash) {
+  try {
+    return bcrypt.compareSync(LEGACY_ADMIN_PASSWORD, hash);
+  } catch {
+    return false;
+  }
+}
 
 class DataStore {
   /**
@@ -23,7 +44,7 @@ class DataStore {
     this.#ensureDataDir(dataDir);
     this.#ensureUploadsDir();
     this.#initDataFile();
-    this.#initAuthFile();
+    this.#ensureAuthConfig();
   }
 
   // ---------- private helpers ----------
@@ -51,17 +72,90 @@ class DataStore {
     }
   }
 
-  #initAuthFile() {
-    if (!fs.existsSync(this.AUTH_FILE)) {
-      const crypto = require('crypto');
-      const bcrypt = require('bcryptjs');
-      const defaultAuth = {
-        username: 'admin',
-        password: bcrypt.hashSync('admin123', 10),
-        jwtSecret: crypto.randomBytes(32).toString('hex'),
-      };
-      this.#writeAuth(defaultAuth);
-      console.log('Created default auth-config.json (username: admin, password: admin123)');
+  /**
+   * 创建或迁移认证配置。
+   *
+   * 安全不变量：签名密钥和初始密码都不能来自仓库内容，且旧版发布过的
+   * 公开密钥 / 默认密码在启动时一律被替换。迁移是幂等的。
+   */
+  #ensureAuthConfig() {
+    const isNew = !fs.existsSync(this.AUTH_FILE);
+    const config = isNew ? { username: 'admin' } : this.#readAuth();
+    let changed = isNew;
+
+    if (typeof config.username !== 'string' || !config.username.trim()) {
+      config.username = 'admin';
+      changed = true;
+    }
+
+    // 1) 签名密钥：环境变量优先，其次保留已有的非公开密钥，否则随机生成。
+    const envSecret = process.env.NAV_JWT_SECRET || '';
+    if (envSecret) {
+      if (
+        envSecret === LEGACY_JWT_SECRET
+        || Buffer.byteLength(envSecret, 'utf8') < MIN_JWT_SECRET_BYTES
+        || envSecret.trim() !== envSecret
+      ) {
+        throw new Error(
+          `NAV_JWT_SECRET 必须是至少 ${MIN_JWT_SECRET_BYTES} 字节、首尾无空格的随机值`
+        );
+      }
+      if (config.jwtSecret !== envSecret) {
+        config.jwtSecret = envSecret;
+        changed = true;
+      }
+    } else if (!config.jwtSecret || config.jwtSecret === LEGACY_JWT_SECRET) {
+      config.jwtSecret = nodeCrypto.randomBytes(32).toString('hex');
+      changed = true;
+      if (!isNew) {
+        console.warn('[auth] 检测到旧版公开的 JWT 签名密钥，已自动轮换（所有旧令牌失效）');
+      }
+    }
+
+    // 2) 令牌版本：改密/改名时递增，使已签发的令牌立即失效。
+    if (!Number.isInteger(config.tokenVersion) || config.tokenVersion < 1) {
+      config.tokenVersion = 1;
+      changed = true;
+    }
+
+    // 3) 初始密码：环境变量 > 保留已有密码 > 随机生成并打印一次。
+    let generatedPassword = null;
+    if (isNew) {
+      const envPassword = process.env.NAV_ADMIN_PASSWORD || '';
+      if (envPassword) {
+        const error = validateInitialPassword(envPassword, config.username);
+        if (error) {
+          throw new Error(`NAV_ADMIN_PASSWORD 不符合要求：${error}`);
+        }
+        config.password = bcrypt.hashSync(envPassword, 10);
+      } else {
+        generatedPassword = nodeCrypto.randomBytes(12).toString('base64url');
+        config.password = bcrypt.hashSync(generatedPassword, 10);
+      }
+    } else if (!config.password || isLegacyPassword(config.password)) {
+      generatedPassword = nodeCrypto.randomBytes(12).toString('base64url');
+      config.password = bcrypt.hashSync(generatedPassword, 10);
+      changed = true;
+      if (!isNew) {
+        console.warn('[auth] 检测到旧版公开的默认管理员密码，已自动轮换');
+      }
+    }
+
+    if (changed) {
+      this.#writeAuth(config);
+    }
+
+    if (isNew || generatedPassword) {
+      const name = config.username;
+      console.log('==============================================');
+      console.log(`[auth] 管理员账号：${name}`);
+      if (generatedPassword) {
+        console.log(`[auth] 初始密码（仅本次显示，请立即修改）：${generatedPassword}`);
+      } else {
+        console.log('[auth] 初始密码来自环境变量 NAV_ADMIN_PASSWORD');
+      }
+      console.log('[auth] 可在后台「修改密码」中更换。');
+      console.log('==============================================');
     }
   }
 
@@ -78,7 +172,10 @@ class DataStore {
   }
 
   #writeAuth(config) {
-    fs.writeFileSync(this.AUTH_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    fs.writeFileSync(this.AUTH_FILE, JSON.stringify(config, null, 2), {
+      encoding: 'utf-8',
+      mode: 0o600,
+    });
   }
 
   // ---------- public: Auth ----------
