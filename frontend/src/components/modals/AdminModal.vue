@@ -34,118 +34,129 @@
     <div class="admin-section">
       <h4>站点设置</h4>
       <div class="settings-form">
-        <div class="form-row">
-          <label class="form-label">站点标题</label>
-          <input
-            class="form-input"
-            v-model="settingsForm.title"
-            placeholder="请输入站点标题"
-          />
-        </div>
-        <div class="form-row">
-          <label class="form-label flex-label">
-            <span>GitHub 直链加速</span>
-            <input type="checkbox" v-model="settingsForm.githubJsdelivr" class="toggle-checkbox" />
-            <span class="toggle-switch"></span>
-          </label>
-          <p class="form-hint">开启后，使用 jsdelivr CDN 加速 raw.githubusercontent.com 的直链</p>
-        </div>
-        <div class="form-row">
-          <label class="form-label flex-label">
-            <span>图片集自动滚动</span>
-            <input type="checkbox" v-model="settingsForm.galleryAutoPlay" class="toggle-checkbox" />
-            <span class="toggle-switch"></span>
-          </label>
-          <p class="form-hint">开启后，链接详情中的图片集将自动轮播</p>
-        </div>
-        <div class="form-row form-row-flex">
-          <div class="form-col">
-            <label class="form-label">自动滚动间隔（秒）</label>
+        <section class="settings-group" aria-label="基础信息">
+          <h5 class="settings-group-title">基础信息</h5>
+          <div class="form-row">
+            <label class="form-label">站点标题</label>
+            <input
+              class="form-input"
+              v-model="settingsForm.title"
+              placeholder="请输入站点标题"
+            />
+          </div>
+          <div class="form-row">
+            <label class="form-label">站点 Logo</label>
+            <div class="logo-mode-tabs">
+              <button
+                class="logo-mode-btn"
+                :class="{ active: logoInputMode === 'url' }"
+                @click="logoInputMode = 'url'"
+              >图片 URL</button>
+              <button
+                class="logo-mode-btn"
+                :class="{ active: logoInputMode === 'upload' }"
+                @click="logoInputMode = 'upload'"
+              >上传文件</button>
+            </div>
+            <input
+              v-if="logoInputMode === 'url'"
+              class="form-input"
+              v-model="settingsForm.logoUrl"
+              placeholder="https://example.com/logo.png 或留空使用默认图标"
+            />
+            <div v-else class="upload-row">
+              <input type="file" accept="image/*" @change="onFileChange" ref="fileInput" />
+            </div>
+          </div>
+          <div class="logo-preview" v-if="currentLogoPreview">
+            <img :src="currentLogoPreview" alt="Logo 预览" />
+            <button class="clear-logo-btn" @click="clearLogo">清除 Logo</button>
+          </div>
+        </section>
+        <section class="settings-group" aria-label="图片集展示">
+          <h5 class="settings-group-title">图片集展示</h5>
+          <div class="form-row">
+            <label class="form-label">图片集默认展示模式</label>
+            <select v-model="settingsForm.galleryDefaultMode" class="form-input">
+              <option value="carousel">轮播</option>
+              <option value="masonry">瀑布流</option>
+            </select>
+          </div>
+          <h6 class="settings-subtitle">轮播设置</h6>
+          <div class="form-row">
+            <label class="form-label flex-label">
+              <span>自动轮播</span>
+              <input type="checkbox" v-model="settingsForm.galleryAutoPlay" class="toggle-checkbox" />
+              <span class="toggle-switch"></span>
+            </label>
+            <p class="form-hint">开启后，链接详情中的图片集将自动轮播</p>
+          </div>
+          <div class="form-row form-row-flex">
+            <div class="form-col">
+              <label class="form-label">轮播间隔（秒）</label>
+              <input
+                class="form-input"
+                type="number"
+                min="1"
+                max="60"
+                v-model.number="settingsForm.galleryAutoPlayInterval"
+                placeholder="例如 5"
+              />
+            </div>
+            <div class="form-col">
+              <label class="form-label">图片切换方式</label>
+              <select v-model="settingsForm.galleryTransition" class="form-input">
+                <option value="fade">淡入淡出</option>
+                <option value="slide">平移滑动</option>
+                <option value="none">无动画</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="form-label">无操作后切换为瀑布流（秒）</label>
             <input
               class="form-input"
               type="number"
-              min="1"
-              max="60"
-              v-model.number="settingsForm.galleryAutoPlayInterval"
-              placeholder="例如 5"
+              min="3"
+              max="300"
+              v-model.number="settingsForm.galleryCarouselTimeout"
+              placeholder="例如 10"
             />
+            <p class="form-hint">设置为 0 则关闭自动切换</p>
           </div>
-          <div class="form-col">
-            <label class="form-label">图片切换方式</label>
-            <select v-model="settingsForm.galleryTransition" class="form-input">
-              <option value="fade">淡入淡出</option>
-              <option value="slide">平移滑动</option>
-              <option value="none">无动画</option>
-            </select>
+          <h6 class="settings-subtitle">瀑布流设置</h6>
+          <div class="form-row">
+            <label class="form-label flex-label">
+              <span>瀑布流自动滚动</span>
+              <input type="checkbox" v-model="settingsForm.galleryMasonryAutoScroll" class="toggle-checkbox" />
+              <span class="toggle-switch"></span>
+            </label>
+            <p class="form-hint">开启后，瀑布流模式下的图片集将自动匀速滚动</p>
           </div>
-        </div>
-        <div class="form-row">
-          <label class="form-label flex-label">
-            <span>瀑布流自动滚动</span>
-            <input type="checkbox" v-model="settingsForm.galleryMasonryAutoScroll" class="toggle-checkbox" />
-            <span class="toggle-switch"></span>
-          </label>
-          <p class="form-hint">开启后，瀑布流模式下的图片集将自动匀速滚动</p>
-        </div>
-        <div class="form-row">
-          <label class="form-label">瀑布流滚动周期（秒）</label>
-          <input
-            class="form-input"
-            type="number"
-            min="5"
-            max="120"
-            v-model.number="settingsForm.galleryMasonryScrollSpeed"
-            placeholder="例如 20"
-          />
-          <p class="form-hint">数值越小滚动速度越快</p>
-        </div>
-        <div class="form-row">
-          <label class="form-label">图片集默认展示模式</label>
-          <select v-model="settingsForm.galleryDefaultMode" class="form-input">
-            <option value="carousel">轮播</option>
-            <option value="masonry">瀑布流</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label class="form-label">轮播无操作切换瀑布流（秒）</label>
-          <input
-            class="form-input"
-            type="number"
-            min="3"
-            max="300"
-            v-model.number="settingsForm.galleryCarouselTimeout"
-            placeholder="例如 10"
-          />
-          <p class="form-hint">设置为 0 则关闭自动切换</p>
-        </div>
-        <div class="form-row">
-          <label class="form-label">站点 Logo</label>
-          <div class="logo-mode-tabs">
-            <button
-              class="logo-mode-btn"
-              :class="{ active: logoInputMode === 'url' }"
-              @click="logoInputMode = 'url'"
-            >图片 URL</button>
-            <button
-              class="logo-mode-btn"
-              :class="{ active: logoInputMode === 'upload' }"
-              @click="logoInputMode = 'upload'"
-            >上传文件</button>
+          <div class="form-row">
+            <label class="form-label">瀑布流滚动周期（秒）</label>
+            <input
+              class="form-input"
+              type="number"
+              min="5"
+              max="120"
+              v-model.number="settingsForm.galleryMasonryScrollSpeed"
+              placeholder="例如 20"
+            />
+            <p class="form-hint">数值越小滚动速度越快</p>
           </div>
-          <input
-            v-if="logoInputMode === 'url'"
-            class="form-input"
-            v-model="settingsForm.logoUrl"
-            placeholder="https://example.com/logo.png 或留空使用默认图标"
-          />
-          <div v-else class="upload-row">
-            <input type="file" accept="image/*" @change="onFileChange" ref="fileInput" />
+        </section>
+        <section class="settings-group" aria-label="资源加速">
+          <h5 class="settings-group-title">资源加速</h5>
+          <div class="form-row">
+            <label class="form-label flex-label">
+              <span>GitHub 直链加速</span>
+              <input type="checkbox" v-model="settingsForm.githubJsdelivr" class="toggle-checkbox" />
+              <span class="toggle-switch"></span>
+            </label>
+            <p class="form-hint">开启后，使用 jsdelivr CDN 加速 raw.githubusercontent.com 的直链</p>
           </div>
-        </div>
-        <div class="logo-preview" v-if="currentLogoPreview">
-          <img :src="currentLogoPreview" alt="Logo 预览" />
-          <button class="clear-logo-btn" @click="clearLogo">清除 Logo</button>
-        </div>
+        </section>
         <div class="settings-msg error" v-if="settingsError">{{ settingsError }}</div>
         <div class="settings-msg success" v-if="settingsSuccess">{{ settingsSuccess }}</div>
         <button class="save-settings-btn" @click="handleSaveSettings" :disabled="settingsLoading">
@@ -695,6 +706,26 @@ watch(
   padding: 14px;
 }
 
+.settings-group + .settings-group {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-group-title {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.settings-subtitle {
+  margin: 16px 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
 .form-row {
   margin-bottom: 12px;
 }
@@ -702,6 +733,12 @@ watch(
 .form-row-flex {
   display: flex;
   gap: 12px;
+}
+
+@media (max-width: 400px) {
+  .form-row-flex {
+    flex-direction: column;
+  }
 }
 
 .form-col {
@@ -721,6 +758,7 @@ watch(
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: space-between;
   cursor: pointer;
   margin-bottom: 4px;
 }
