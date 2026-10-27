@@ -7,7 +7,6 @@
     <CategoryTabs
       :categories="store.categories"
       :activeId="store.activeTabId"
-      :layoutMode="uiStore.layoutMode"
       @update:activeId="store.activeTabId = $event"
     />
 
@@ -38,7 +37,7 @@
       </template>
 
       <!-- Stream Layout Mode -->
-      <template v-else-if="uiStore.layoutMode === 'stream'">
+      <template v-else-if="activeCategory?.id === 'cat_001'">
         <StreamLayout
           :categories="store.categories"
           :showActions="authStore.isLoggedIn"
@@ -54,29 +53,6 @@
 
       <!-- Paginated Category Content -->
       <template v-else-if="activeCategory">
-        <!-- "全部" tab - show all links grouped by category -->
-        <template v-if="activeCategory.id === 'cat_001'">
-          <template v-for="cat in categoriesWithContent" :key="cat.id">
-            <template v-for="sub in cat.subCategories" :key="sub.id">
-              <SubCategorySection
-                v-if="sub.links && sub.links.length"
-                :subCategory="sub"
-                :showActions="authStore.isLoggedIn"
-                :catId="cat.id"
-                :subId="sub.id"
-                @edit="openSubCategoryModal(cat.id, sub)"
-                @delete="openDeleteModal('subCategory', sub, cat.id)"
-                @addLink="openLinkModal(null, cat.id, sub.id)"
-                @editLink="(link) => openLinkModal(link, cat.id, sub.id)"
-                @deleteLink="(link) => openDeleteModal('link', link, cat.id, sub.id)"
-                @showDetail="handleShowDetail"
-              />
-            </template>
-          </template>
-        </template>
-
-        <!-- Specific category tab -->
-        <template v-else>
           <draggable
             v-if="authStore.isLoggedIn"
             v-model="activeCategory.subCategories"
@@ -124,7 +100,6 @@
               + 添加二级分类
             </button>
           </div>
-        </template>
       </template>
 
       <div v-else class="empty-state">
@@ -233,7 +208,6 @@
 import { ref, computed, onMounted, watchEffect } from 'vue'
 import { useNavStore } from './stores/navStore.js'
 import { useAuthStore } from './stores/authStore.js'
-import { useUiStore } from './stores/uiStore.js'
 import draggable from 'vuedraggable'
 import NavHeader from './components/NavHeader.vue'
 import SearchBar from './components/SearchBar.vue'
@@ -253,7 +227,6 @@ import ConfirmModal from './components/modals/ConfirmModal.vue'
 
 const store = useNavStore()
 const authStore = useAuthStore()
-const uiStore = useUiStore()
 
 onMounted(() => {
   store.fetchAll()
@@ -273,10 +246,6 @@ const activeCategory = computed(() => {
   return store.categories.find(c => c.id === store.activeTabId)
 })
 
-const categoriesWithContent = computed(() => {
-  return store.categories.filter(c => c.id !== 'cat_001' && c.subCategories?.length)
-})
-
 async function onSubCategoryDragEnd(catId) {
   const cat = store.categories.find(c => c.id === catId)
   if (!cat || !cat.subCategories) return
@@ -290,17 +259,36 @@ async function onSubCategoryDragEnd(catId) {
 
 // --- Login modal ---
 const loginModalVisible = ref(false)
+let pendingAuthenticatedAction = null
+let checkingAuth = false
 
-function handleOpenAdmin() {
-  if (authStore.isLoggedIn) {
-    adminModalVisible.value = true
-  } else {
-    loginModalVisible.value = true
+async function openAuthenticated(action) {
+  if (checkingAuth) return
+  checkingAuth = true
+  try {
+    if (await authStore.checkAuth()) {
+      pendingAuthenticatedAction = null
+      action()
+    } else {
+      pendingAuthenticatedAction = action
+      loginModalVisible.value = true
+    }
+  } catch {
+    alert('暂时无法验证登录状态，请检查连接后重试')
+  } finally {
+    checkingAuth = false
   }
 }
 
+function handleOpenAdmin() {
+  openAuthenticated(() => { adminModalVisible.value = true })
+}
+
 function onLoginSuccess() {
-  adminModalVisible.value = true
+  const action = pendingAuthenticatedAction
+  pendingAuthenticatedAction = null
+  if (action) action()
+  else adminModalVisible.value = true
 }
 
 function handleLogout() {
@@ -331,8 +319,10 @@ const categoryModalVisible = ref(false)
 const editingCategory = ref(null)
 
 function openCategoryModal(cat = null) {
-  editingCategory.value = cat
-  categoryModalVisible.value = true
+  openAuthenticated(() => {
+    editingCategory.value = cat
+    categoryModalVisible.value = true
+  })
 }
 
 async function handleCategorySubmit(payload) {
@@ -354,9 +344,11 @@ const editingSubCategory = ref(null)
 const editingParentCatId = ref('')
 
 function openSubCategoryModal(catId, sub = null) {
-  editingParentCatId.value = catId
-  editingSubCategory.value = sub
-  subCategoryModalVisible.value = true
+  openAuthenticated(() => {
+    editingParentCatId.value = catId
+    editingSubCategory.value = sub
+    subCategoryModalVisible.value = true
+  })
 }
 
 async function handleSubCategorySubmit(payload) {
@@ -387,14 +379,12 @@ const editingCategoryId = ref('')
 const editingSubCategoryId = ref('')
 
 function openLinkModal(link = null, catId = '', subId = '') {
-  if (!authStore.isLoggedIn) {
-    loginModalVisible.value = true
-    return
-  }
-  editingLink.value = link
-  editingCategoryId.value = catId || (activeCategory.value?.id !== 'cat_001' ? activeCategory.value?.id : '')
-  editingSubCategoryId.value = subId
-  linkModalVisible.value = true
+  openAuthenticated(() => {
+    editingLink.value = link
+    editingCategoryId.value = catId || (activeCategory.value?.id !== 'cat_001' ? activeCategory.value?.id : '')
+    editingSubCategoryId.value = subId
+    linkModalVisible.value = true
+  })
 }
 
 async function handleLinkSubmit({ isEdit, linkId, categoryId, subCategoryId, data }) {

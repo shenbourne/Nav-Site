@@ -3,7 +3,6 @@ import { ref } from 'vue'
 
 export const useUiStore = defineStore('ui', () => {
   const theme = ref(localStorage.getItem('nav_theme') || 'system')
-  const layoutMode = ref(localStorage.getItem('nav_layout') || 'paginated')
 
   let mediaQuery = null
   let mediaHandler = null
@@ -44,19 +43,12 @@ export const useUiStore = defineStore('ui', () => {
     applyTheme()
   }
 
-  function setLayoutMode(val) {
-    layoutMode.value = val
-    localStorage.setItem('nav_layout', val)
-  }
-
   // Initialize on store creation
   addMediaListener()
   applyTheme()
 
   return {
     theme,
-    layoutMode,
     setTheme,
-    setLayoutMode,
   }
 })

@@ -1,7 +1,7 @@
 <template>
   <div class="tabs-wrapper" ref="tabsRef">
     <div class="tabs-container">
-      <template v-for="cat in displayCategories" :key="cat.id">
+      <template v-for="cat in categories" :key="cat.id">
         <button
           class="tab-item"
           :class="{ active: cat.id === activeId }"
@@ -16,45 +16,27 @@
 </template>
 
 <script setup>
-import { ref, computed, toRef } from 'vue'
+import { ref, toRef } from 'vue'
 import { useWheelTab } from '../composables/useWheelTab.js'
 
 const props = defineProps({
   categories: { type: Array, default: () => [] },
   activeId: { type: String, default: '' },
-  layoutMode: { type: String, default: 'paginated' },
 })
 
 const emit = defineEmits(['update:activeId'])
 
 const tabsRef = ref(null)
 
-const displayCategories = computed(() => {
-  if (props.layoutMode === 'stream') {
-    // In stream mode, replace "全部" with scroll-to-top
-    return props.categories.filter(c => c.id !== 'cat_001')
-  }
-  return props.categories
-})
-
 function handleTabClick(catId) {
-  if (props.layoutMode === 'stream') {
-    const el = document.getElementById('section-' + catId)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  } else {
-    emit('update:activeId', catId)
-  }
+  emit('update:activeId', catId)
 }
-
-const isPaginated = computed(() => props.layoutMode === 'paginated')
 
 useWheelTab({
   wrapperRef: tabsRef,
   categories: toRef(props, 'categories'),
   activeTabId: toRef(props, 'activeId'),
-  enabled: isPaginated,
+  enabled: ref(true),
   onSwitch: (id) => emit('update:activeId', id),
 })
 </script>

@@ -32,9 +32,12 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data: res } = await api.get('/auth/check')
       return res.success
-    } catch {
-      logout()
-      return false
+    } catch (error) {
+      if (error.response?.status === 401) {
+        logout()
+        return false
+      }
+      throw error
     }
   }
 

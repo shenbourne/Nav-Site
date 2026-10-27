@@ -74,26 +74,32 @@
           </div>
         </section>
         <section class="settings-group" aria-label="图片集展示">
-          <h5 class="settings-group-title">图片集展示</h5>
-          <div class="form-row">
-            <label class="form-label">图片集默认展示模式</label>
-            <select v-model="settingsForm.galleryDefaultMode" class="form-input">
-              <option value="carousel">轮播</option>
-              <option value="masonry">瀑布流</option>
-            </select>
+          <div class="settings-group-header">
+            <h5 id="gallery-mode-label" class="settings-group-title">图片集展示</h5>
+            <div class="gallery-mode-switch" role="radiogroup" aria-labelledby="gallery-mode-label">
+              <label class="gallery-mode-option">
+                <input v-model="settingsForm.galleryDefaultMode" type="radio" name="gallery-default-mode" value="carousel" />
+                <span>幻灯片</span>
+              </label>
+              <label class="gallery-mode-option">
+                <input v-model="settingsForm.galleryDefaultMode" type="radio" name="gallery-default-mode" value="masonry" />
+                <span>横向画廊</span>
+              </label>
+            </div>
           </div>
-          <h6 class="settings-subtitle">轮播设置</h6>
+          <template v-if="settingsForm.galleryDefaultMode === 'carousel'">
+          <h6 class="settings-subtitle">幻灯片设置</h6>
           <div class="form-row">
             <label class="form-label flex-label">
-              <span>自动轮播</span>
+              <span>自动播放</span>
               <input type="checkbox" v-model="settingsForm.galleryAutoPlay" class="toggle-checkbox" />
               <span class="toggle-switch"></span>
             </label>
-            <p class="form-hint">开启后，链接详情中的图片集将自动轮播</p>
+            <p class="form-hint">开启后，幻灯片模式下的图片将自动切换</p>
           </div>
           <div class="form-row form-row-flex">
             <div class="form-col">
-              <label class="form-label">轮播间隔（秒）</label>
+              <label class="form-label">切换间隔（秒）</label>
               <input
                 class="form-input"
                 type="number"
@@ -112,29 +118,31 @@
               </select>
             </div>
           </div>
+          </template>
+          <template v-else>
+          <h6 class="settings-subtitle">横向画廊设置</h6>
           <div class="form-row">
-            <label class="form-label">无操作后切换为瀑布流（秒）</label>
+            <label class="form-label">无操作后切换为横向画廊（秒）</label>
             <input
               class="form-input"
               type="number"
-              min="3"
+              min="0"
               max="300"
               v-model.number="settingsForm.galleryCarouselTimeout"
               placeholder="例如 10"
             />
             <p class="form-hint">设置为 0 则关闭自动切换</p>
           </div>
-          <h6 class="settings-subtitle">瀑布流设置</h6>
           <div class="form-row">
             <label class="form-label flex-label">
-              <span>瀑布流自动滚动</span>
+              <span>自动滚动</span>
               <input type="checkbox" v-model="settingsForm.galleryMasonryAutoScroll" class="toggle-checkbox" />
               <span class="toggle-switch"></span>
             </label>
-            <p class="form-hint">开启后，瀑布流模式下的图片集将自动匀速滚动</p>
+            <p class="form-hint">开启后，横向画廊中的图片将自动匀速滚动</p>
           </div>
           <div class="form-row">
-            <label class="form-label">瀑布流滚动周期（秒）</label>
+            <label class="form-label">滚动周期（秒）</label>
             <input
               class="form-input"
               type="number"
@@ -145,6 +153,7 @@
             />
             <p class="form-hint">数值越小滚动速度越快</p>
           </div>
+          </template>
         </section>
         <section class="settings-group" aria-label="资源加速">
           <h5 class="settings-group-title">资源加速</h5>
@@ -473,6 +482,67 @@ watch(
 </script>
 
 <style scoped>
+.gallery-mode-switch {
+  display: inline-flex;
+  max-width: 100%;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--bg-section);
+  box-shadow: inset 0 1px 4px rgb(0 0 0 / 6%);
+}
+
+.settings-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.settings-group-header .settings-group-title {
+  margin-bottom: 0;
+}
+
+.gallery-mode-option {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.gallery-mode-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.gallery-mode-option span {
+  display: block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.gallery-mode-option input:checked + span {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+}
+
+.gallery-mode-option input:focus-visible + span {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .user-bar {
   display: flex;
   align-items: center;

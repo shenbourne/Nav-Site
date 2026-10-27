@@ -283,13 +283,13 @@ function handleCarouselMouseLeave() {
   startCarouselInactivityTimer()
 }
 
-// 轮播无操作自动切换瀑布流
+// 仅横向画廊为默认模式时，临时查看幻灯片后自动返回画廊。
 let carouselInactivityTimer = null
 
 function startCarouselInactivityTimer() {
   stopCarouselInactivityTimer()
-  const timeout = navStore.siteSettings.galleryCarouselTimeout || 10000
-  if (galleryMode.value === 'carousel' && timeout > 0) {
+  const timeout = navStore.siteSettings.galleryCarouselTimeout ?? 10000
+  if (navStore.siteSettings.galleryDefaultMode === 'masonry' && galleryMode.value === 'carousel' && timeout > 0) {
     carouselInactivityTimer = setTimeout(() => {
       setGalleryMode('masonry')
     }, timeout)
@@ -751,7 +751,7 @@ onUnmounted(() => {
   border-radius: 8px;
   overflow: hidden;
   cursor: zoom-in;
-  background: var(--bg-card);
+  background: transparent;
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   align-items: center;
